@@ -1033,16 +1033,17 @@
 
             // ===== Echter Verkehrslärm (FLAC von GitHub, gestreamt) =====
             trafficGain = new Tone.Gain(0.25).toDestination();
+            const trafficUrl = "https://raw.githubusercontent.com/Jkegithub/Tuerme-von-Hanoi-3D-animation/main/traffic-heavy-busy-street-india.flac";
             try {
                 trafficPlayer = new Tone.Player({
-                    url: "https://raw.githubusercontent.com/Jkegithub/Tuerme-von-Hanoi-3D-animation/main/traffic-heavy-busy-street-india.flac",
+                    url: trafficUrl,
                     loop: true,
                     autostart: false,
                     fadeIn: 2,
                     fadeOut: 2
                 }).connect(trafficGain);
 
-                await trafficPlayer.load();
+                await trafficPlayer.load(trafficUrl);
                 if (soundOn && audioReady) trafficPlayer.start();
                 console.log("✓ Traffic-Sound von GitHub geladen & spielt (loop)");
             } catch (err) {
