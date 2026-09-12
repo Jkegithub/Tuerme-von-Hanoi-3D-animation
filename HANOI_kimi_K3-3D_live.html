@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türme von Hanoi 3D – Hanoi Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        body { font-family:'Roboto', sans-serif; background:#1a2b45; color:#e2e8f0; overflow:hidden; }
+        .font-display { font-family:'Orbitron', sans-serif; }
+        #canvas-container { position:fixed; inset:0; z-index:0; }
+        canvas { display:block; }
+        .glass-panel {
+            background: rgba(15,30,55,0.65);
+            backdrop-filter: blur(12px);
+            border:1px solid rgba(255,255,255,0.15);
+            box-shadow:0 8px 32px rgba(0,0,0,0.35);
+        }
+        .btn-primary {
+            background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);
+            box-shadow:0 4px 15px rgba(239,68,68,0.4);
+            transition:all .2s;
+        }
+        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 22px rgba(239,68,68,0.6); }
+        .btn-primary:active { transform:translateY(0); }
+        .icon-btn { transition:all .2s; }
+        .icon-btn.active { background:rgba(251,191,36,0.25); border-color:#fbbf24 !important; }
+        .overlay-fade { transition:opacity .6s; }
+        .time-btn { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
+        .time-btn.active { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <!-- Start Overlay -->
+    <div id="audio-overlay" class="overlay-fade fixed inset-0 z-50 flex items-center justify-center bg-slate-900/85 backdrop-blur-sm">
+        <div class="text-center px-6">
+            <h1 class="text-4xl md:text-5xl font-display font-bold text-amber-400 mb-4 tracking-widest">TÜRME VON HANOI <span class="text-red-400">3D</span></h1>
+            <p class="text-slate-300 mb-2">🖱️ Ziehen: Kamera drehen · Mausrad: Zoomen</p>
+            <p class="text-slate-400 mb-2 text-sm">🌇 Tag/Nacht-Zyklus · 🌧️ Monsun-Regen · 🚣 Sampan-Boote · 🔊 Umgebungsgeräusche</p>
+            <p class="text-slate-500 mb-8 text-xs">Klicken aktiviert den Sound</p>
+            <button id="start-btn" class="px-10 py-4 bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold rounded-full text-xl transition-all shadow-[0_0_25px_rgba(251,191,36,0.5)]">
+                SPIEL STARTEN
+            </button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-40 px-4 pt-4 pointer-events-none">
+        <div class="max-w-5xl mx-auto glass-panel rounded-2xl px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-red-400">TÜRME VON HANOI 3D</h1>
+                <p class="text-[11px] text-slate-300">Alle Scheiben zum rechten Turm (ZIEL)</p>
+            </div>
+            <div class="flex gap-5 text-center pointer-events-auto items-center">
+                <div>
+                    <div class="text-[10px] text-slate-300 uppercase tracking-widest">Züge</div>
+                    <div id="move-count" class="text-2xl font-bold font-display">0</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-300 uppercase tracking-widest">Minimum</div>
+                    <div id="min-moves" class="text-2xl font-bold text-slate-400 font-display">7</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-300 uppercase tracking-widest">Zeit</div>
+                    <div id="timer" class="text-2xl font-bold font-display">00:00</div>
+                </div>
+                <div class="flex flex-col gap-1 ml-2">
+					<div class="flex gap-2">
+						<button id="sound-btn" title="Sound an/aus" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🔊</button>
+						<button id="moped-btn" title="Moped-Sound an/aus" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🏍️</button>
+						<button id="cycle-btn" title="Tageszeit stoppen/fortsetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">⏸️</button>
+					</div>
+                    <div class="flex gap-1 justify-center">
+                        <button class="time-btn icon-btn rounded border border-slate-600" data-ct="0.06" title="Morgen">🌅</button>
+                        <button class="time-btn icon-btn rounded border border-slate-600 active" data-ct="0.25" title="Tag">☀️</button>
+                        <button class="time-btn icon-btn rounded border border-slate-600" data-ct="0.48" title="Abend">🌇</button>
+                        <button class="time-btn icon-btn rounded border border-slate-600" data-ct="0.75" title="Nacht">🌙</button>
+                    </div>
+                    <div id="daynight-indicator" class="text-center text-sm" title="Tageszeit">🌞</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Controls -->
+    <div class="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pointer-events-none">
+        <div class="max-w-4xl mx-auto glass-panel rounded-2xl p-5 grid grid-cols-1 md:grid-cols-3 gap-5 pointer-events-auto">
+            <div class="flex flex-col gap-2 justify-center">
+                <label class="text-xs text-slate-300 font-bold uppercase tracking-wider">Anzahl der Scheiben</label>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="disk-slider" min="3" max="8" value="3" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-amber-400">
+                    <span id="disk-count-display" class="text-2xl font-display text-amber-300 w-8 text-center">3</span>
+                </div>
+            </div>
+            <div class="flex justify-center items-center gap-3">
+                <button id="reset-btn" title="Neustart" class="px-4 py-3 rounded-xl font-bold text-slate-200 hover:text-white border border-slate-500 hover:border-slate-300 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+                <button id="demo-btn" class="btn-primary px-6 py-3 rounded-xl font-bold text-white flex items-center gap-2 whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                    Auto-Lösung
+                </button>
+            </div>
+            <div class="flex items-center justify-center md:justify-end">
+                <div id="game-message" class="text-sm text-amber-200 font-medium text-center md:text-right">Klicke einen Turm, um eine Scheibe zu wählen</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ============ KONSTANTEN ============
+        const MAX_DISKS = 8;
+        const DISK_H = 0.5;
+        const ROD_H = MAX_DISKS * DISK_H + 1.4;
+        const BASE_TOP = 0.35;
+        const SPACING = 7.5;
+        const TOWER_X = [-SPACING, 0, SPACING];
+        const RADIUS_STEP = 0.35;
+        const RADIUS_BASE = 0.5;
+        const COLORS = [0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x06b6d4, 0x3b82f6, 0x8b5cf6, 0xd946ef];
+        const NOTES = ["C5","B4","A4","G4","F4","E4","D4","C4"];
+        const DAY_LEN = 120;
+        const LAKE_POS = new THREE.Vector3(38, 0.02, -18);
+        const ISLAND_POS = new THREE.Vector3(45, 0, -11);  // Turm-Insel mittig in der östlichen Seehälfte
+		// Straße führt jetzt auf Höhe z=-18 – direkt über den See (Brücke)
+        const ROAD_Z = -18;
+        const BRIDGE_X0 = 20, BRIDGE_X1 = 56;      // Brücken-Spannweite (See x: 22..54)
+        const BRIDGE_Y = 0.72;                      // Fahrbahnhöhe der Brücke
+
+        // ============ STATE ============
+        let towers = [[], [], []];
+        let diskMeshes = {};
+        let diskCount = 3;
+        let selectedTower = null;
+        let selectedMesh = null;
+        let moveCount = 0;
+        let isAnimating = false;
+        let isDemoRunning = false;
+        let timerInterval = null;
+        let startTime = null;
+        let synth = null;
+        let confetti = [];
+        let audioReady = false;
+        let soundOn = true;
+
+		// Audio-Nodes
+		let humNoise, humGain, rainNoise, rainGain;
+		let hornSynth, birdSynth;
+		let mopedEngineNoise, mopedEngineFilter, mopedEngineGain; // NEU: Moped-Motorsound
+
+		// Moped-Motor (Synth statt Noise für feinen Sound)
+		let mopedSynth;
+		let mopedVolumeGain;
+		let mopedEngineOn = false;  // NEU: Schalter
+		let trafficPlayer, trafficGain;
+		
+        // Tag/Nacht
+        let winGlow = 0.1;
+        let sunElev = 1;
+        let cyclePaused = false;
+        let frozenCt = 0.25;
+        let cycleOffset = 0;
+
+        // Regen: nur automatisch
+        const rain = { factor: 0, target: 0, nextAuto: 20 + Math.random() * 25, autoEnd: 0 };
+
+        // ============ THREE SETUP ============
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0xc8dcf0, 45, 110);
+
+        const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 300);
+        camera.position.set(13, 9, 14);
+
+        const renderer = new THREE.WebGLRenderer({ antialias:true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 2.5, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.minDistance = 7;
+        controls.maxDistance = 35;
+        controls.maxPolarAngle = Math.PI/2 - 0.05;
+
+        // ============ HIMMEL ============
+        const skyMat = new THREE.ShaderMaterial({
+            side: THREE.BackSide,
+            depthWrite: false,
+            uniforms: {
+                top:    { value: new THREE.Color(0x4a90d9) },
+                middle: { value: new THREE.Color(0x9cc8ee) },
+                bottom: { value: new THREE.Color(0xffe3b3) }
+            },
+            vertexShader: `varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+            fragmentShader: `
+                uniform vec3 top; uniform vec3 middle; uniform vec3 bottom;
+                varying vec3 vPos;
+                void main(){
+                    float h = normalize(vPos).y;
+                    vec3 col = h > 0.25 ? mix(middle, top, smoothstep(0.25, 0.9, h))
+                                        : mix(bottom, middle, smoothstep(-0.05, 0.25, h));
+                    gl_FragColor = vec4(col, 1.0);
+                }`
+        });
+        scene.add(new THREE.Mesh(new THREE.SphereGeometry(140, 32, 20), skyMat));
+
+        // Sonne & Mond
+        const sunMesh = new THREE.Mesh(new THREE.CircleGeometry(6, 32),
+            new THREE.MeshBasicMaterial({ color: 0xfff3c4, fog:false }));
+        scene.add(sunMesh);
+        const sunGlow = new THREE.Mesh(new THREE.CircleGeometry(10, 32),
+            new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent:true, opacity:0.35, fog:false }));
+        scene.add(sunGlow);
+        const moonMesh = new THREE.Mesh(new THREE.CircleGeometry(3.5, 32),
+            new THREE.MeshBasicMaterial({ color: 0xdce8ff, fog:false, transparent:true, opacity:0.9 }));
+        scene.add(moonMesh);
+
+        // Sterne
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(400*3);
+        for (let i = 0; i < 400; i++) {
+            const a = Math.random()*Math.PI*2, e = Math.random()*Math.PI/2;
+            const r = 135;
+            starPos[i*3]   = Math.cos(a)*Math.cos(e)*r;
+            starPos[i*3+1] = Math.sin(e)*r;
+            starPos[i*3+2] = Math.sin(a)*Math.cos(e)*r;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent:true, opacity:0, fog:false });
+        scene.add(new THREE.Points(starGeo, starMat));
+
+        // ============ TAG/NACHT-SCHLÜSSEL ============
+        const SKY_KEYS = [
+            { t:0.00, top:0x3d7ac2, mid:0x9cc8ee, bot:0xffe9c4, sunCol:0xfff3c4, sunI:1.7, dirCol:0xfff2d9, dirI:1.7, fog:0xc8dcf0, win:0.15, hemi:0.9 },
+            { t:0.25, top:0x2e6fc0, mid:0x8fc0ec, bot:0xdceffb, sunCol:0xfff8dd, sunI:2.1, dirCol:0xffffff, dirI:2.0, fog:0xcfe3f2, win:0.05, hemi:1.05 },
+            { t:0.50, top:0x574f9a, mid:0xe58e5c, bot:0xffab5e, sunCol:0xff9e4a, sunI:1.4, dirCol:0xffb080, dirI:1.3, fog:0xd8b49e, win:0.5,  hemi:0.7 },
+            { t:0.62, top:0x0a1430, mid:0x17264a, bot:0x25324a, sunCol:0xff9e4a, sunI:0.0, dirCol:0x778fc9, dirI:0.3, fog:0x101826, win:1.0,  hemi:0.22 },
+            { t:0.88, top:0x08112b, mid:0x141f3c, bot:0x1f2a40, sunCol:0xff9e4a, sunI:0.0, dirCol:0x778fc9, dirI:0.3, fog:0x0d1520, win:1.0,  hemi:0.2 },
+            { t:0.95, top:0x5a4a80, mid:0xd98a7a, bot:0xffcf9a, sunCol:0xffd9a0, sunI:1.0, dirCol:0xffc8a0, dirI:0.9, fog:0xc9b4ac, win:0.5,  hemi:0.6 },
+            { t:1.00, top:0x3d7ac2, mid:0x9cc8ee, bot:0xffe9c4, sunCol:0xfff3c4, sunI:1.7, dirCol:0xfff2d9, dirI:1.7, fog:0xc8dcf0, win:0.15, hemi:0.9 }
+        ];
+        SKY_KEYS.forEach(k => {
+            k.topC = new THREE.Color(k.top); k.midC = new THREE.Color(k.mid);
+            k.botC = new THREE.Color(k.bot); k.sunC = new THREE.Color(k.sunCol);
+            k.dirC = new THREE.Color(k.dirCol); k.fogC = new THREE.Color(k.fog);
+        });
+        function sampleCycle(ct) {
+            let i = 0;
+            while (i < SKY_KEYS.length - 2 && SKY_KEYS[i+1].t < ct) i++;
+            const a = SKY_KEYS[i], b = SKY_KEYS[i+1];
+            const span = Math.max(b.t - a.t, 0.0001);
+            return { a, b, f: THREE.MathUtils.clamp((ct - a.t)/span, 0, 1) };
+        }
+
+        // ============ LICHT ============
+        const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x8a7a5a, 0.9);
+        scene.add(hemi);
+        const dirLight = new THREE.DirectionalLight(0xfff2d9, 1.8);
+        dirLight.position.set(14, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048);
+        dirLight.shadow.camera.left = -18; dirLight.shadow.camera.right = 18;
+        dirLight.shadow.camera.top = 18; dirLight.shadow.camera.bottom = -18;
+        scene.add(dirLight);
+
+        // ============ BODEN ============
+        const ground = new THREE.Mesh(new THREE.CircleGeometry(130, 48),
+            new THREE.MeshStandardMaterial({ color: 0x7fae6e, roughness: 1 }));
+        ground.rotation.x = -Math.PI/2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // ============ STADT ============
+        const cityGroup = new THREE.Group();
+        scene.add(cityGroup);
+        const buildingMats = [];
+        const lampMats = [];
+
+        function makeBuildingTextures(baseColor, litRatio) {
+            const c = document.createElement('canvas'); c.width = 64; c.height = 128;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = baseColor; ctx.fillRect(0, 0, 64, 128);
+            const e = document.createElement('canvas'); e.width = 64; e.height = 128;
+            const ectx = e.getContext('2d');
+            ectx.fillStyle = '#000'; ectx.fillRect(0, 0, 64, 128);
+            for (let y = 6; y < 122; y += 10) {
+                for (let x = 5; x < 58; x += 12) {
+                    const lit = Math.random() < litRatio;
+                    ctx.fillStyle = 'rgba(25,35,50,0.6)';
+                    ctx.fillRect(x, y, 7, 6);
+                    if (lit) {
+                        // Variierende Helligkeit pro Fenster, nicht immer Vollweiß
+                        const brightness = 140 + Math.floor(Math.random() * 80);
+                        ectx.fillStyle = `rgb(${brightness},${Math.floor(brightness*0.82)},${Math.floor(brightness*0.5)})`;
+                        ectx.fillRect(x, y, 7, 6);
+                    }
+                }
+            }
+            const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace;
+            const emis = new THREE.CanvasTexture(e); emis.colorSpace = THREE.SRGBColorSpace;
+            return { map, emis };
+        }
+        const houseColors = ['#e8c9a0','#d9a878','#c9b8a8','#e0d0b8','#cfa88f','#e5bfa5','#d4c4a8'];
+        function addBuilding(x, z, w, h, d, colorIdx, litRatio) {
+            const tex = makeBuildingTextures(houseColors[colorIdx % houseColors.length], litRatio);
+            const mat = new THREE.MeshStandardMaterial({
+                map: tex.map, emissiveMap: tex.emis,
+                emissive: 0xffcf7a, emissiveIntensity: 0.1, roughness: 0.9
+            });
+            // Varianz für unterschiedliche Nachthelligkeit
+            mat._variance = 0.4 + Math.random() * 0.8;
+            buildingMats.push(mat);
+            const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            b.position.set(x, h/2, z);
+            cityGroup.add(b);
+            return b;
+        }
+        function nearLake(x, z, margin = 19) {
+            const dx = x - LAKE_POS.x, dz = z - LAKE_POS.z;
+            return Math.sqrt(dx*dx + dz*dz) < margin;
+        }
+		function buildSkyline() {
+			// Hintere Hochhäuser (weit weg vom See)
+			for (let i = 0; i < 26; i++) {
+				const x = -70 + i*5.6 + (Math.random()-0.5)*2;
+				const z = -38 - Math.random()*8;
+				if (nearLake(x, z)) continue;
+				addBuilding(x, z, 3 + Math.random()*3, 6 + Math.random()*10, 3 + Math.random()*2, i, 0.35);
+			}
+			// Vordere Reihe – überspringt den See
+			for (let i = 0; i < 32; i++) {
+				const x = -66 + i*4.3 + (Math.random()-0.5);
+				const z = -30;
+				if (nearLake(x, z)) continue; // <-- FIX: See-Check ergänzt
+				addBuilding(x, z, 2 + Math.random()*1.5, 4 + Math.random()*6, 2.5, i+3, 0.5);
+			}
+			// --- Ufer-Bebauung: Häuser gruppieren sich UM den See herum ---
+			for (let i = 0; i < 14; i++) {
+				const ang = (i / 14) * Math.PI * 2 + 0.2;
+				const r = 23 + Math.random() * 5;
+				const x = LAKE_POS.x + Math.cos(ang) * r;
+				const z = LAKE_POS.z + Math.sin(ang) * r;
+				if (nearLake(x, z, 19)) continue;
+				if (z < -25) continue;
+				if (Math.abs(z - ROAD_Z) < 4.5 && x > BRIDGE_X0 - 6 && x < BRIDGE_X1 + 6) continue;
+				if (x > 25 && x < 52 && z > -23 && z < -13) continue;
+				if (Math.abs(x - ISLAND_POS.x) < 6 && Math.abs(z - ISLAND_POS.z) < 6) continue;
+				const b = addBuilding(x, z, 2 + Math.random()*1.5, 3.5 + Math.random()*4, 2.5, i+5, 0.6);
+				b.rotation.y = -ang + Math.PI/2;
+			}
+		}
+		buildSkyline();
+
+        // Turtle Tower
+        function buildTurtleTower(x, z, s = 1) {
+            const g = new THREE.Group();
+            g.scale.setScalar(s);
+            const stone = new THREE.MeshStandardMaterial({ color: 0xb8a888, roughness: 0.85 });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 3), stone); base.position.y = 0.6; g.add(base);
+            const lv1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 2.2), stone); lv1.position.y = 2.3; g.add(lv1);
+            const lv2 = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.8, 1.7), stone); lv2.position.y = 4.3; g.add(lv2);
+            const lv3 = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 1.6, 8), stone); lv3.position.y = 6; g.add(lv3);
+            const top = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.2, 8),
+                new THREE.MeshStandardMaterial({ color: 0x8a4a3a })); top.position.y = 7.4; g.add(top);
+            for (let i = 0; i < 4; i++) {
+                const win = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.8),
+                    new THREE.MeshBasicMaterial({ color: 0xffd97a }));
+                const a = i * Math.PI/2;
+                win.position.set(Math.sin(a)*1.11, 2.3, Math.cos(a)*1.11);
+                win.rotation.y = a; g.add(win);
+            }
+            g.position.set(x, 0, z); cityGroup.add(g);
+        }
+
+        // Hoan-Kiem-See
+        const lake = new THREE.Mesh(new THREE.CircleGeometry(16, 40),
+            new THREE.MeshStandardMaterial({ color: 0x5fa8c9, roughness: 0.15, metalness: 0.6 }));
+        lake.rotation.x = -Math.PI/2;
+        lake.position.copy(LAKE_POS);
+        scene.add(lake);
+
+        // Turtle Tower auf kleiner Insel, mittig in der östlichen Seehälfte
+        const island = new THREE.Mesh(new THREE.CircleGeometry(1.8, 24),
+            new THREE.MeshStandardMaterial({ color: 0x8a9a6a, roughness: 1 }));
+        island.rotation.x = -Math.PI/2;
+        island.position.set(ISLAND_POS.x, 0.04, ISLAND_POS.z);
+        island.receiveShadow = true;
+        scene.add(island);
+        // Stein-Uferring
+        const shore = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.16, 8, 24),
+            new THREE.MeshStandardMaterial({ color: 0x8a8078, roughness: 0.9 }));
+        shore.rotation.x = Math.PI/2;
+        shore.position.set(ISLAND_POS.x, 0.05, ISLAND_POS.z);
+        scene.add(shore);
+        buildTurtleTower(ISLAND_POS.x, ISLAND_POS.z, 0.6);
+
+        // One-Pillar-Pagode
+        function buildPagoda(x, z) {
+            const g = new THREE.Group();
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 3, 12),
+                new THREE.MeshStandardMaterial({ color: 0x9a8a7a })); pillar.position.y = 1.5; g.add(pillar);
+            const temple = new THREE.Mesh(new THREE.BoxGeometry(3, 1.6, 3),
+                new THREE.MeshStandardMaterial({ color: 0xb85c48 })); temple.position.y = 3.8; g.add(temple);
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 1.4, 4),
+                new THREE.MeshStandardMaterial({ color: 0x6a3a2a })); roof.position.y = 5.3; roof.rotation.y = Math.PI/4; g.add(roof);
+            g.position.set(x, 0, z); cityGroup.add(g);
+        }
+        buildPagoda(-38, -20);
+
+        // Bäume
+        function buildTree(x, z, s) {
+            const g = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15*s, 0.25*s, 1.5*s, 8),
+                new THREE.MeshStandardMaterial({ color: 0x6a4a32 })); trunk.position.y = 0.75*s; g.add(trunk);
+            const leafMat = new THREE.MeshStandardMaterial({ color: 0x4a8a4a, roughness: 1 });
+            for (let i = 0; i < 3; i++) {
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry((0.9 - i*0.15)*s, 10, 8), leafMat);
+                leaf.position.set((Math.random()-0.5)*0.5*s, (1.6 + i*0.55)*s, (Math.random()-0.5)*0.5*s);
+                g.add(leaf);
+            }
+            g.position.set(x, 0, z); scene.add(g);
+        }
+        // Bäume entlang der Straße – Abstand zu See, Straße und Häuserzeile (z=-30)
+        for (let i = 0; i < 14; i++) {
+            const x = -60 + i*9 + Math.random()*3;
+            const z = -24;
+            if (nearLake(x, z, 19)) continue;               // nicht im See
+            if (Math.abs(z - ROAD_Z) < 4) continue;         // nicht auf der Straße
+            buildTree(x, z, 1 + Math.random()*0.8);
+        }
+        // Einzelbäume nur, wenn freie Fläche
+        [[-20, 10, 1.3], [22, 9, 1.1], [-30, 4, 1.0], [48, -4, 1.2], [18, -4, 0.9]].forEach(([x, z, s]) => {
+            if (!nearLake(x, z, 18.5) && Math.abs(z - ROAD_Z) > 4) buildTree(x, z, s);
+        });
+
+		
+// ============ STRASSE + BRÜCKE ÜBER DEN SEE ============
+
+        const roadMat = new THREE.MeshStandardMaterial({ color: 0x4a4a52, roughness: 1 });
+
+        // Straßenstücke links/rechts der Brücke
+        const roadL = new THREE.Mesh(new THREE.PlaneGeometry(BRIDGE_X0 + 80, 4), roadMat);
+        roadL.rotation.x = -Math.PI/2; roadL.position.set((BRIDGE_X0 - 80)/2, 0.03, ROAD_Z); scene.add(roadL);
+        const roadR = new THREE.Mesh(new THREE.PlaneGeometry(80 - BRIDGE_X1, 4), roadMat);
+        roadR.rotation.x = -Math.PI/2; roadR.position.set((BRIDGE_X1 + 80)/2, 0.03, ROAD_Z); scene.add(roadR);
+
+        // Mittelstreifen (nur auf festem Boden)
+        for (let i = 0; i < 34; i++) {
+            const x = -78 + i * 4.8;
+            if (x > BRIDGE_X0 - 2 && x < BRIDGE_X1 + 2) continue;
+            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.15),
+                new THREE.MeshBasicMaterial({ color: 0xffe9a8 }));
+            stripe.rotation.x = -Math.PI/2; stripe.position.set(x, 0.04, ROAD_Z); scene.add(stripe);
+        }
+
+        // --- Brücke (rote Holzbrücke im Stil der Huc-Brücke) ---
+        const bridgeGroup = new THREE.Group();
+        const deckMat = new THREE.MeshStandardMaterial({ color: 0x9a3a2e, roughness: 0.7 });
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE_X1 - BRIDGE_X0, 0.35, 4.6), deckMat);
+        deck.position.set((BRIDGE_X0 + BRIDGE_X1)/2, BRIDGE_Y - 0.18, ROAD_Z);
+        deck.castShadow = true; deck.receiveShadow = true;
+        bridgeGroup.add(deck);
+
+        // Leichte Wölbung: zwei seitliche Trägerbögen
+        const archMat = new THREE.MeshStandardMaterial({ color: 0x7a2a20, roughness: 0.75 });
+        [-2.1, 2.1].forEach(dz => {
+            const arch = new THREE.Mesh(new THREE.TorusGeometry((BRIDGE_X1 - BRIDGE_X0)/2, 0.22, 8, 32, Math.PI), archMat);
+            arch.rotation.y = Math.PI/2;
+            arch.position.set((BRIDGE_X0 + BRIDGE_X1)/2, BRIDGE_Y - 0.3, ROAD_Z + dz);
+            bridgeGroup.add(arch);
+        });
+
+        // Geländer
+        [-2.15, 2.15].forEach(dz => {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE_X1 - BRIDGE_X0, 0.1, 0.1), deckMat);
+            rail.position.set((BRIDGE_X0 + BRIDGE_X1)/2, BRIDGE_Y + 0.55, ROAD_Z + dz);
+            bridgeGroup.add(rail);
+            for (let x = BRIDGE_X0 + 1; x < BRIDGE_X1; x += 2.4) {
+                const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), deckMat);
+                post.position.set(x, BRIDGE_Y + 0.28, ROAD_Z + dz);
+                bridgeGroup.add(post);
+            }
+        });
+
+        // Pfeiler im Wasser
+        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x6a5a4a, roughness: 0.9 });
+        for (let x = BRIDGE_X0 + 6; x < BRIDGE_X1; x += 8) {
+            [-1.8, 1.8].forEach(dz => {
+                const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, BRIDGE_Y + 0.4, 10), pillarMat);
+                pil.position.set(x, (BRIDGE_Y - 0.3)/2, ROAD_Z + dz);
+                bridgeGroup.add(pil);
+            });
+        }
+        scene.add(bridgeGroup);
+		
+        // Straßenlaternen
+        for (let i = 0; i < 9; i++) {
+            const x = -60 + i * 15;
+            if (x > BRIDGE_X0 - 3 && x < BRIDGE_X1 + 3) continue;  // keine Laterne auf der Brücke
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.2, 8),
+                new THREE.MeshStandardMaterial({ color: 0x555a60 }));
+            pole.position.set(x, 1.6, -14.8); scene.add(pole);
+            const lampMat = new THREE.MeshStandardMaterial({
+                color: 0xfff2c0, emissive: 0xffd77a, emissiveIntensity: 0
+            });
+            lampMats.push(lampMat);
+            const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), lampMat);
+            lamp.position.set(x, 3.3, -14.8); scene.add(lamp);
+        }
+
+        // Mopeds
+        const mopeds = [];
+        const mopedColors = [0xdd3333, 0x3366dd, 0xeeeeee, 0xddaa22, 0x33aa66];
+        function buildMoped(dir) {
+            const g = new THREE.Group();
+            const col = mopedColors[Math.floor(Math.random()*mopedColors.length)];
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.35, 0.3),
+                new THREE.MeshStandardMaterial({ color: col })); body.position.y = 0.45; g.add(body);
+            const rider = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.55, 0.3),
+                new THREE.MeshStandardMaterial({ color: 0x334455 })); rider.position.set(-0.1, 0.85, 0); g.add(rider);
+            const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8),
+                new THREE.MeshStandardMaterial({ color: col })); helmet.position.set(-0.1, 1.25, 0); g.add(helmet);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 12), wheelMat);
+            w1.rotation.x = Math.PI/2; w1.position.set(0.45, 0.18, 0); g.add(w1);
+            const w2 = w1.clone(); w2.position.x = -0.45; g.add(w2);
+            const light = new THREE.Mesh(new THREE.SphereGeometry(0.07),
+                new THREE.MeshBasicMaterial({ color: 0xfff2b0 })); light.position.set(0.58, 0.5, 0); g.add(light);
+            if (dir < 0) g.rotation.y = Math.PI;
+            g.userData = { dir, speed: 6 + Math.random()*5, lane: dir > 0 ? -16.9 : -19.1 };
+            g.position.set(dir > 0 ? -80 : 80, 0, g.userData.lane);
+            scene.add(g); mopeds.push(g);
+        }
+        for (let i = 0; i < 10; i++) buildMoped(i % 2 === 0 ? 1 : -1);
+
+        // Wolken
+        const clouds = [];
+        const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent:true, opacity:0.9 });
+        for (let i = 0; i < 8; i++) {
+            const g = new THREE.Group();
+            for (let j = 0; j < 4; j++) {
+                const s = new THREE.Mesh(new THREE.SphereGeometry(2 + Math.random()*2, 10, 8), cloudMat);
+                s.position.set(j*2.5 - 4 + Math.random(), Math.random(), Math.random()*1.5);
+                s.scale.y = 0.55; g.add(s);
+            }
+            g.position.set(-90 + Math.random()*180, 26 + Math.random()*14, -50 - Math.random()*30);
+            g.userData.speed = 0.4 + Math.random()*0.6;
+            scene.add(g); clouds.push(g);
+        }
+
+        // Vögel
+        const birds = [];
+        const birdMat = new THREE.MeshBasicMaterial({ color: 0x2a3a4a, side: THREE.DoubleSide });
+        for (let i = 0; i < 6; i++) {
+            const g = new THREE.Group();
+            const w1 = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.3), birdMat); w1.position.x = -0.45; g.add(w1);
+            const w2 = w1.clone(); w2.position.x = 0.45; g.add(w2);
+            g.userData = { w1, w2, phase: Math.random()*Math.PI*2, speed: 3 + Math.random()*2,
+                           radius: 30 + Math.random()*25, height: 18 + Math.random()*10, offset: Math.random()*Math.PI*2 };
+            scene.add(g); birds.push(g);
+        }
+
+        // Lampion-Ketten
+        const lanterns = [];
+        const lanternColors = [0xef4444, 0xf59e0b, 0xeab308, 0xec4899];
+        function buildLanternString(xCenter, z, topY = 9.5) {
+            const g = new THREE.Group();
+            const span = 2.0, sag = 0.8, count = 5;
+            const pts = [];
+            for (let i = 0; i <= 20; i++) {
+                const t2 = i / 20;
+                pts.push(new THREE.Vector3((t2 - 0.5) * span * 2, -sag * Math.sin(t2 * Math.PI), 0));
+            }
+            g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, 0.015),
+                new THREE.MeshBasicMaterial({ color: 0x222222 })));
+            for (let i = 1; i <= count; i++) {
+                const t2 = i / (count + 1);
+                const lant = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12),
+                    new THREE.MeshStandardMaterial({
+                        color: lanternColors[i % lanternColors.length],
+                        emissive: lanternColors[i % lanternColors.length], emissiveIntensity: 0.4
+                    }));
+                lant.scale.y = 1.2;
+                lant.position.set((t2 - 0.5) * span * 2, -sag * Math.sin(t2 * Math.PI) - 0.4, 0);
+                lant.userData.phase = Math.random() * Math.PI * 2;
+                g.add(lant); lanterns.push(lant);
+            }
+            g.position.set(xCenter, topY, z);
+            scene.add(g);
+        }
+        TOWER_X.forEach(tx => buildLanternString(tx, 3.6));
+
+        // Lampion-Spotlights
+        const SPOT_MAX = 450;
+        const gameSpots = [];
+        const lightPools = [];
+        const stringGlows = [];
+
+        TOWER_X.forEach(tx => {
+            const spot = new THREE.SpotLight(0xffd9a0, 0, 30, Math.PI / 5.5, 0.7, 1.2);
+            spot.position.set(tx, 9.6, 3.6);
+            const tgt = new THREE.Object3D();
+            tgt.position.set(tx, 0, 0);
+            scene.add(tgt);
+            spot.target = tgt;
+            scene.add(spot);
+            gameSpots.push(spot);
+
+            const pool = new THREE.Mesh(
+                new THREE.CircleGeometry(4.3, 28),
+                new THREE.MeshBasicMaterial({
+                    color: 0xff9a3c, transparent: true, opacity: 0,
+                    blending: THREE.AdditiveBlending, depthWrite: false
+                })
+            );
+            pool.rotation.x = -Math.PI / 2;
+            pool.position.set(tx, 0.06, 0.4);
+            scene.add(pool);
+            lightPools.push(pool);
+
+            const pl = new THREE.PointLight(0xffa040, 0, 13, 1.6);
+            pl.position.set(tx, 9.0, 3.6);
+            scene.add(pl);
+            stringGlows.push(pl);
+        });
+
+        // Sampan-Boote
+        const boats = [];
+        function buildBoat(radius, speed, phase, canopyColor) {
+            const g = new THREE.Group();
+            const wood = new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 0.9 });
+            const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.3, 2.8, 10), wood);
+            hull.rotation.z = Math.PI/2; hull.scale.set(1, 0.55, 1); g.add(hull);
+            const bow = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 10), wood);
+            bow.rotation.z = -Math.PI/2 + 0.3; bow.position.set(1.55, 0.18, 0); g.add(bow);
+            const stern = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 10), wood);
+            stern.rotation.z = Math.PI/2 - 0.3; stern.position.set(-1.55, 0.18, 0); g.add(stern);
+            const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8, 0, Math.PI*2, 0, Math.PI/2),
+                new THREE.MeshStandardMaterial({ color: canopyColor, roughness: 0.8 }));
+            canopy.position.set(0.2, 0.2, 0); canopy.scale.set(1.4, 0.8, 1); g.add(canopy);
+            const person = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.5, 0.28),
+                new THREE.MeshStandardMaterial({ color: 0x8a5c3a })); person.position.set(-0.7, 0.45, 0); g.add(person);
+            const hat = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.18, 10),
+                new THREE.MeshStandardMaterial({ color: 0xd8b878 })); hat.position.set(-0.7, 0.79, 0); g.add(hat);
+            g.userData = { radius, speed, phase };
+            scene.add(g); boats.push(g);
+        }
+        // Boote kreisen eng um die Insel:
+        // Insel r=1.8 → Mindestradius 2.6 (kein Landkontakt)
+        // max. z = -11 + 4.2*0.85 ≈ -7.4 → Brücke (z=-18) nie erreicht
+        // max. x = 45 + 4.2 = 49.2 → bleibt im See (See reicht bis x=54)
+        buildBoat(2.6, 0.12, 0,   0xd8b878);
+        buildBoat(3.4, -0.09, 2.5, 0xb85c48);
+        buildBoat(4.2, 0.07, 4.5, 0x4a7a9a);
+
+        // ============ REGEN ============
+        const RAIN_COUNT = 1600;
+        const rainGeo = new THREE.BufferGeometry();
+        const rainPos = new Float32Array(RAIN_COUNT * 3);
+        for (let i = 0; i < RAIN_COUNT; i++) {
+            rainPos[i*3]   = -60 + Math.random()*120;
+            rainPos[i*3+1] = Math.random()*30;
+            rainPos[i*3+2] = -35 + Math.random()*60;
+        }
+        rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+        const rainMat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.14, transparent:true, opacity:0 });
+        const rainPoints = new THREE.Points(rainGeo, rainMat);
+        scene.add(rainPoints);
+
+        // ============ 8 PFÜTZEN ============
+        const puddles = [];
+        const PUDDLE_POSITIONS = [
+            [-45, -26.5], [-32, -25.8], [-18, -27.2], [-5, -25.5],
+            [8, -26.8], [22, -25.2], [35, -27.0], [48, -26.0]
+        ];
+        PUDDLE_POSITIONS.forEach(([x, z]) => {
+            const pud = new THREE.Mesh(
+                new THREE.CircleGeometry(1.2 + Math.random() * 0.8, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0x6a8aaa, transparent: true, opacity: 0,
+                    roughness: 0.05, metalness: 0.4
+                })
+            );
+            pud.rotation.x = -Math.PI / 2;
+            pud.position.set(x, 0.025, z);
+            scene.add(pud);
+            puddles.push(pud);
+        });
+
+        // ============ SPIEL-GEOMETRIE ============
+        const gameGroup = new THREE.Group();
+        scene.add(gameGroup);
+
+        // Plattform
+        const platform = new THREE.Mesh(new THREE.BoxGeometry(SPACING*2 + 4, 0.7, 4.5),
+            new THREE.MeshStandardMaterial({ color: 0x8a5a2a, roughness: 0.7 }));
+        platform.position.y = 0;
+        platform.receiveShadow = true; platform.castShadow = true;
+        gameGroup.add(platform);
+
+        // Stäbe
+        const rodMat = new THREE.MeshStandardMaterial({ color: 0xc9a15a, metalness: 0.8, roughness: 0.3 });
+        for (let i = 0; i < 3; i++) {
+            const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, ROD_H, 16), rodMat);
+            rod.position.set(TOWER_X[i], BASE_TOP + ROD_H/2, 0);
+            rod.castShadow = true;
+            gameGroup.add(rod);
+            const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), rodMat);
+            cap.position.set(TOWER_X[i], BASE_TOP + ROD_H + 0.1, 0);
+            gameGroup.add(cap);
+        }
+
+        // Unsichtbare Klick-Zonen
+        const clickZones = [];
+        const zoneMat = new THREE.MeshBasicMaterial({ visible: false });
+        for (let i = 0; i < 3; i++) {
+            const zone = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, ROD_H + 3, 8), zoneMat);
+            zone.position.set(TOWER_X[i], (ROD_H + 3)/2, 0);
+            zone.userData.tower = i;
+            gameGroup.add(zone);
+            clickZones.push(zone);
+        }
+
+        // Ziel-Markierung
+        const goalRing = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.07, 10, 40),
+            new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent:true, opacity:0.7 }));
+        goalRing.rotation.x = Math.PI/2;
+        goalRing.position.set(TOWER_X[2], 0.45, 0);
+        gameGroup.add(goalRing);
+
+        // ============ SCHEIBEN ============
+        function createDiskMesh(size) {
+            const r = RADIUS_BASE + size * RADIUS_STEP;
+            const geo = new THREE.CylinderGeometry(r, r, DISK_H * 0.92, 32);
+            const mat = new THREE.MeshStandardMaterial({
+                color: COLORS[size % COLORS.length],
+                metalness: 0.35, roughness: 0.35,
+                emissive: COLORS[size % COLORS.length],
+                emissiveIntensity: 0.12
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            mesh.userData.size = size;
+            return mesh;
+        }
+
+        function diskY(towerIdx, posInStack) {
+            return BASE_TOP + DISK_H/2 + posInStack * DISK_H;
+        }
+
+        function buildDisks() {
+            Object.values(diskMeshes).forEach(m => { gameGroup.remove(m); m.geometry.dispose(); m.material.dispose(); });
+            diskMeshes = {};
+            towers = [[], [], []];
+            for (let s = diskCount - 1; s >= 0; s--) {
+                const mesh = createDiskMesh(s);
+                mesh.position.set(TOWER_X[0], diskY(0, towers[0].length), 0);
+                mesh.userData.tower = 0;
+                gameGroup.add(mesh);
+                diskMeshes[s] = mesh;
+                towers[0].push(s);
+            }
+        }
+
+        // ============ UI-HELPER ============
+        const moveEl = document.getElementById('move-count');
+        const minEl = document.getElementById('min-moves');
+        const timerEl = document.getElementById('timer');
+        const msgEl = document.getElementById('game-message');
+
+        function updateMinMoves() { minEl.textContent = Math.pow(2, diskCount) - 1; }
+        function setMessage(t) { msgEl.textContent = t; }
+        function updateMoves() { moveEl.textContent = moveCount; }
+
+        function startTimer() {
+            stopTimer();
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const s = Math.floor((Date.now() - startTime) / 1000);
+                timerEl.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+            }, 500);
+        }
+        function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+
+        function playNote(size) {
+            if (!synth || !soundOn) return;
+            synth.triggerAttackRelease(NOTES[size % NOTES.length], "8n");
+        }
+
+        // ============ KLICK / RAYCAST ============
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let downPos = null;
+        renderer.domElement.addEventListener('pointerdown', e => { downPos = [e.clientX, e.clientY]; });
+        renderer.domElement.addEventListener('pointerup', e => {
+            if (!downPos) return;
+            const dx = e.clientX - downPos[0], dy = e.clientY - downPos[1];
+            downPos = null;
+            if (dx*dx + dy*dy > 25) return;
+            if (isAnimating || isDemoRunning) return;
+
+            pointer.x = (e.clientX / innerWidth) * 2 - 1;
+            pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+
+            const allDisks = Object.values(diskMeshes);
+            let hits = raycaster.intersectObjects(allDisks, false);
+            let towerIdx = null;
+            if (hits.length > 0) {
+                towerIdx = hits[0].object.userData.tower;
+            } else {
+                hits = raycaster.intersectObjects(clickZones, false);
+                if (hits.length > 0) towerIdx = hits[0].object.userData.tower;
+            }
+            if (towerIdx !== null) handleTowerClick(towerIdx);
+        });
+
+        function clearSelection() {
+            if (selectedMesh) {
+                selectedMesh.material.emissive.setHex(0x000000);
+                gsap.to(selectedMesh.position, { y: diskY(selectedTower, towers[selectedTower].length - 1), duration: 0.2 });
+            }
+            selectedMesh = null;
+            selectedTower = null;
+        }
+
+        function handleTowerClick(idx) {
+            if (selectedTower === null) {
+                if (towers[idx].length === 0) { setMessage('Dieser Turm ist leer – wähle einen Turm mit Scheiben.'); return; }
+                selectedTower = idx;
+                const topSize = towers[idx][towers[idx].length - 1];
+                selectedMesh = diskMeshes[topSize];
+                selectedMesh.material.emissive.setHex(0x22d3ee);
+                gsap.to(selectedMesh.position, { y: selectedMesh.position.y + 0.35, duration: 0.25, ease: 'power2.out' });
+                setMessage('Scheibe gewählt – klicke den Zielturm.');
+            } else if (selectedTower === idx) {
+                clearSelection();
+                setMessage('Auswahl aufgehoben.');
+            } else {
+                attemptMove(selectedTower, idx);
+            }
+        }
+
+        // ============ BEWEGUNG ============
+        async function animateMove(from, to) {
+            const size = towers[from][towers[from].length - 1];
+            const mesh = diskMeshes[size];
+            const targetStack = towers[to].length;
+            const liftY = BASE_TOP + ROD_H + 1.2;
+
+            isAnimating = true;
+            const tl = gsap.timeline();
+            tl.to(mesh.position, { y: liftY, duration: 0.35, ease: 'power2.out' })
+              .to(mesh.position, { x: TOWER_X[to], duration: 0.4, ease: 'power2.inOut' })
+              .to(mesh.position, { y: diskY(to, targetStack), duration: 0.35, ease: 'power2.in' });
+            await tl;
+            isAnimating = false;
+        }
+
+        async function attemptMove(from, to) {
+            const moving = towers[from][towers[from].length - 1];
+            const target = towers[to].length > 0 ? towers[to][towers[to].length - 1] : Infinity;
+
+            if (moving > target) {
+                setMessage('❌ Ungültig: Größere Scheibe kann nicht auf kleinere liegen!');
+                if (synth && soundOn) synth.triggerAttackRelease("A2", "16n");
+                clearSelection();
+                return;
+            }
+
+            const mesh = diskMeshes[moving];
+            mesh.material.emissive.setHex(0x000000);
+            selectedMesh = null;
+            selectedTower = null;
+            await animateMove(from, to);
+            towers[from].pop();
+            towers[to].push(moving);
+            mesh.userData.tower = to;
+            moveCount++;
+            updateMoves();
+            playNote(moving);
+            setMessage('Guter Zug! Weiter so.');
+
+            if (moveCount === 1 && !timerInterval) startTimer();
+            checkWin();
+        }
+
+        // ============ AUTO-LÖSUNG ============
+        function hanoiMoves(n, from, to, aux, moves) {
+            if (n === 0) return;
+            hanoiMoves(n - 1, from, aux, to, moves);
+            moves.push([from, to]);
+            hanoiMoves(n - 1, aux, to, from, moves);
+        }
+
+        async function runDemo() {
+            if (isDemoRunning || isAnimating) return;
+            resetGame();
+            isDemoRunning = true;
+            setMessage('🤖 Auto-Lösung läuft…');
+            const moves = [];
+            hanoiMoves(diskCount, 0, 2, 1, moves);
+            for (const [f, t] of moves) {
+                if (!isDemoRunning) break;
+                await attemptMove(f, t);
+                await new Promise(r => setTimeout(r, 120));
+            }
+            isDemoRunning = false;
+        }
+
+        // ============ RESET & GEWINN ============
+        function resetGame() {
+            isDemoRunning = false;
+            clearSelection();
+            buildDisks();
+            moveCount = 0;
+            updateMoves();
+			updateMinMoves();   // <-- FIX: Minimum-Anzeige aktualisieren
+            stopTimer();
+            timerEl.textContent = '00:00';
+            startTime = null;
+            confetti.forEach(c => scene.remove(c.mesh));
+            confetti = [];
+            setMessage('Klicke einen Turm, um eine Scheibe zu wählen');
+        }
+
+        function checkWin() {
+            if (towers[2].length === diskCount) {
+                stopTimer();
+                const optimal = Math.pow(2, diskCount) - 1;
+                const perf = moveCount === optimal ? '🏆 PERFEKT! Optimale Lösung!' : `Geschafft in ${moveCount} Zügen (Minimum: ${optimal})`;
+                setMessage('🎉 ' + perf);
+                if (synth && soundOn) {
+                    const now = Tone.now();
+                    ["C4","E4","G4","C5","E5","G5"].forEach((n, i) => synth.triggerAttackRelease(n, "8n", now + i*0.12));
+                }
+                spawnConfetti();
+            }
+        }
+
+        function spawnConfetti() {
+            const geo = new THREE.PlaneGeometry(0.18, 0.18);
+            for (let i = 0; i < 150; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: COLORS[Math.floor(Math.random()*COLORS.length)],
+                    side: THREE.DoubleSide
+                });
+                const m = new THREE.Mesh(geo, mat);
+                m.position.set(TOWER_X[2] + (Math.random()-0.5)*2, 4 + Math.random()*4, (Math.random()-0.5)*2);
+                m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
+                scene.add(m);
+                confetti.push({
+                    mesh: m,
+                    vx: (Math.random()-0.5)*3, vy: 1 + Math.random()*3, vz: (Math.random()-0.5)*3,
+                    rx: (Math.random()-0.5)*6, rz: (Math.random()-0.5)*6,
+                    life: 4 + Math.random()*2
+                });
+            }
+        }
+
+        function updateConfetti(dt) {
+            for (let i = confetti.length - 1; i >= 0; i--) {
+                const c = confetti[i];
+                c.vy -= 5 * dt;
+                c.mesh.position.x += c.vx * dt;
+                c.mesh.position.y += c.vy * dt;
+                c.mesh.position.z += c.vz * dt;
+                c.mesh.rotation.x += c.rx * dt;
+                c.mesh.rotation.z += c.rz * dt;
+                c.life -= dt;
+                if (c.life <= 0 || c.mesh.position.y < 0.1) {
+                    scene.remove(c.mesh);
+                    c.mesh.material.dispose();
+                    confetti.splice(i, 1);
+                }
+            }
+        }
+
+        // ============ AMBIENT-SOUND (startet erst nach "Spiel starten") ============
+        async function initAmbient() {
+            // Stadtrauschen
+            humNoise = new Tone.Noise("pink").start();
+            humGain = new Tone.Gain(0.015).toDestination();
+            const humFilter = new Tone.Filter(400, "lowpass");
+            humNoise.connect(humFilter); humFilter.connect(humGain);
+
+            // Regen
+            rainNoise = new Tone.Noise("white").start();
+            rainGain = new Tone.Gain(0).toDestination();
+            const rainFilter = new Tone.Filter(2500, "highpass");
+            rainNoise.connect(rainFilter); rainFilter.connect(rainGain);
+
+            // Hupen
+            hornSynth = new Tone.Synth({ oscillator: { type: "square" }, volume: -22 }).toDestination();
+            (function scheduleHorn() {
+                setTimeout(() => {
+                    if (soundOn && audioReady && mopeds.length > 0) {
+                        const notes = ["A4","G4","B4","E4"];
+                        hornSynth.triggerAttackRelease(notes[Math.floor(Math.random()*notes.length)], "16n");
+                        if (Math.random() > 0.6) setTimeout(() => soundOn && hornSynth.triggerAttackRelease("A4","32n"), 150);
+                    }
+                    scheduleHorn();
+                }, 4000 + Math.random()*10000);
+            })();
+
+            // ===== Echter Verkehrslärm (lokale FLAC-Datei, gestreamt) =====
+            trafficGain = new Tone.Gain(0.25).toDestination();
+            try {
+                trafficPlayer = new Tone.Player({
+                    url: "./traffic-heavy-busy-street-india.flac",
+                    loop: true,
+                    autostart: false,
+                    fadeIn: 2,
+                    fadeOut: 2
+                }).connect(trafficGain);
+
+                await trafficPlayer.load();
+                if (soundOn && audioReady) trafficPlayer.start();
+                console.log("✓ Traffic-Sound geladen & spielt (loop)");
+            } catch (err) {
+                console.warn("⚠️ Traffic-Audio nicht gefunden – Datei muss im selben Ordner liegen wie die HTML:", err);
+                trafficPlayer = null;
+            }
+
+            // Vogelgezwitscher (nur tagsüber)
+            birdSynth = new Tone.Synth({ oscillator: { type: "sine" }, volume: -26 }).toDestination();
+            (function scheduleBird() {
+                setTimeout(() => {
+                    if (soundOn && audioReady && sunElev > 0) {
+                        const base = 2200 + Math.random()*800;
+                        birdSynth.triggerAttackRelease(base, "32n");
+                        setTimeout(() => soundOn && sunElev > 0 && birdSynth.triggerAttackRelease(base*1.2, "64n"), 120);
+                        setTimeout(() => soundOn && sunElev > 0 && birdSynth.triggerAttackRelease(base*0.9, "32n"), 260);
+                    }
+                    scheduleBird();
+                }, 3000 + Math.random()*8000);
+            })();
+        }
+		function applySoundState() {
+			const btn = document.getElementById('sound-btn');
+			btn.textContent = soundOn ? '🔊' : '🔇';
+			if (!audioReady) return;
+			if (synth) synth.volume.value = soundOn ? -10 : -Infinity;
+			if (humGain) humGain.gain.rampTo(soundOn ? 0.015 : 0, 0.3);
+			if (rainGain) rainGain.gain.rampTo(soundOn ? rain.factor * 0.12 : 0, 0.3);
+			if (hornSynth) hornSynth.volume.value = soundOn ? -22 : -Infinity;
+			if (birdSynth) birdSynth.volume.value = soundOn ? -26 : -Infinity;
+			// NEU: Traffic-Player
+			if (trafficGain) trafficGain.gain.rampTo(soundOn ? 0.25 : 0, 0.3);
+			if (trafficPlayer && trafficPlayer.loaded) {
+				if (soundOn && trafficPlayer.state !== "started") trafficPlayer.start();
+				if (!soundOn && trafficPlayer.state === "started") { /* läuft leise weiter, kein hartes Stop nötig */ }
+			}
+		}
+
+        // ============ STADT-ANIMATION (pro Frame) ============
+        function updateCity(dt, t) {
+            // --- Tag/Nacht (einfrierbar) ---
+            let ct;
+            if (cyclePaused) {
+                ct = frozenCt;
+            } else {
+                ct = ((t - cycleOffset) % DAY_LEN) / DAY_LEN;
+                frozenCt = ct;
+            }
+            const { a, b, f } = sampleCycle(ct);
+            skyMat.uniforms.top.value.lerpColors(a.topC, b.topC, f);
+            skyMat.uniforms.middle.value.lerpColors(a.midC, b.midC, f);
+            skyMat.uniforms.bottom.value.lerpColors(a.botC, b.botC, f);
+            scene.fog.color.lerpColors(a.fogC, b.fogC, f);
+            dirLight.color.lerpColors(a.dirC, b.dirC, f);
+            dirLight.intensity = THREE.MathUtils.lerp(a.dirI, b.dirI, f);
+            hemi.intensity = THREE.MathUtils.lerp(a.hemi, b.hemi, f);
+            winGlow = THREE.MathUtils.lerp(a.win, b.win, f);
+
+            // Fenster: gedimmt + pro Gebäude Varianz (NICHT grell)
+            buildingMats.forEach(m => {
+                m.emissiveIntensity = winGlow * 0.55 * m._variance;
+            });
+            // Laternen
+            lampMats.forEach(m => m.emissiveIntensity = winGlow * 2.5);
+
+            // Lampion-Beleuchtung
+            const flick = 0.9 + 0.07 * Math.sin(t * 7) + 0.03 * Math.sin(t * 13.7);
+            gameSpots.forEach(s => { s.intensity = winGlow * SPOT_MAX * flick; });
+            stringGlows.forEach((p, i) => { p.intensity = winGlow * (24 + 4 * Math.sin(t * 4 + i * 2)); });
+            lightPools.forEach((pl, i) => {
+                pl.material.opacity = winGlow * (0.20 + 0.05 * Math.sin(t * 2.2 + i * 1.7));
+            });
+
+            // Sonne
+            const sunA = ct * Math.PI * 2;
+            sunMesh.position.set(Math.cos(sunA) * 120, Math.sin(sunA) * 70, -110);
+            sunGlow.position.copy(sunMesh.position);
+            sunElev = Math.sin(sunA);
+            const sunVis = sunElev > -0.08;
+            sunMesh.visible = sunVis; sunGlow.visible = sunVis;
+            const sunI = THREE.MathUtils.lerp(a.sunI, b.sunI, f);
+            sunMesh.material.color.lerpColors(a.sunC, b.sunC, f);
+            sunGlow.material.opacity = sunVis ? 0.2 + 0.2 * Math.max(0, sunElev) : 0;
+
+            // Mond
+            moonMesh.position.set(-Math.cos(sunA) * 120, -Math.sin(sunA) * 70, -110);
+            moonMesh.visible = sunElev < 0.1;
+
+            // --- Lichtquelle wandert: Schatten folgen Sonne (Tag) bzw. Mond (Nacht) ---
+            const lightSrc = sunElev > 0 ? sunMesh.position : moonMesh.position;
+            dirLight.position.set(
+                lightSrc.x * 0.25,
+                Math.max(Math.abs(lightSrc.y) * 0.25, 6),
+                lightSrc.z * 0.25 + 8
+            );
+			
+            // Sterne
+            starMat.opacity = THREE.MathUtils.clamp(-sunElev * 3, 0, 0.9);
+
+            // Indikator-Emoji
+            const ind = document.getElementById('daynight-indicator');
+            ind.textContent = sunElev > 0.4 ? '🌞' : sunElev > 0 ? '🌇' : '';
+
+			// --- Mopeds ---
+			let closestDist = Infinity;
+			let totalSpeedFactor = 0;
+			mopeds.forEach(m => {
+				m.position.x += m.userData.dir * m.userData.speed * dt;
+				const onBridge = m.position.x > BRIDGE_X0 && m.position.x < BRIDGE_X1;
+				const baseY = onBridge ? BRIDGE_Y : 0;
+				m.position.y = baseY + Math.abs(Math.sin(t * 18 + m.userData.speed)) * 0.02;
+				if (m.userData.dir > 0 && m.position.x > 85) m.position.x = -85;
+				if (m.userData.dir < 0 && m.position.x < -85) m.position.x = 85;
+			
+				// NEU: Entfernung zur Kamera für Motorsound-Lautstärke
+				const dist = m.position.distanceTo(camera.position);
+				if (dist < closestDist) closestDist = dist;
+			});
+			
+			// NEU: Motorsound-Lautstärke & Tonhöhe abhängig von Nähe
+			if (mopedEngineGain && audioReady) {
+				const targetVol = soundOn
+					? THREE.MathUtils.clamp(THREE.MathUtils.mapLinear(closestDist, 3, 45, 0.28, 0), 0, 0.28)
+					: 0;
+				mopedEngineGain.gain.rampTo(targetVol, 0.3);
+				// Je näher, desto höher/aggressiver der Motorklang
+				const targetFreq = THREE.MathUtils.mapLinear(closestDist, 3, 45, 1400, 700);
+				mopedEngineFilter.frequency.rampTo(THREE.MathUtils.clamp(targetFreq, 700, 1400), 0.3);
+			}
+
+            // --- Wolken ---
+            clouds.forEach(c => {
+                c.position.x += c.userData.speed * dt;
+                if (c.position.x > 110) c.position.x = -110;
+            });
+
+            // --- Vögel ---
+            birds.forEach(bd => {
+                const u = bd.userData;
+                const a2 = t * u.speed * 0.05 + u.offset;
+                bd.position.set(Math.cos(a2) * u.radius, u.height + Math.sin(t * 0.7 + u.phase) * 1.5, Math.sin(a2) * u.radius - 20);
+                bd.rotation.y = -a2;
+                const flap = Math.sin(t * 10 + u.phase) * 0.6;
+                u.w1.rotation.z = flap;
+                u.w2.rotation.z = -flap;
+            });
+
+            // --- Lampions ---
+            lanterns.forEach(l => {
+                l.rotation.z = Math.sin(t * 1.2 + l.userData.phase) * 0.15;
+                l.position.y += Math.sin(t * 2 + l.userData.phase) * 0.0008;
+                l.material.emissiveIntensity = 0.35 + winGlow * (0.8 + 0.2 * Math.sin(t * 3 + l.userData.phase));
+            });
+
+            // --- Boote (kreisen um die Turm-Insel, nie an der Brücke) ---
+            boats.forEach(bt => {
+                const u = bt.userData;
+                const a3 = t * u.speed + u.phase;
+                bt.position.set(ISLAND_POS.x + Math.cos(a3) * u.radius, 0.12 + Math.sin(t * 1.5 + u.phase) * 0.05, ISLAND_POS.z + Math.sin(a3) * u.radius * 0.85);                bt.rotation.y = -a3 + (u.speed > 0 ? Math.PI/2 : -Math.PI/2);
+                bt.rotation.z = Math.sin(t * 1.3 + u.phase) * 0.04;
+            });
+
+            // --- See ---
+            lake.material.roughness = 0.12 + Math.sin(t * 2) * 0.05 + rain.factor * 0.2;
+
+            // --- Ziel-Ring ---
+            goalRing.scale.setScalar(1 + Math.sin(t * 2.5) * 0.05);
+
+            // --- REGEN (nur automatisch) ---
+            updateRain(dt, t);
+
+            // --- PFÜTZEN (dynamische Opacity) ---
+            const isNight = sunElev < 0;
+            const rainStrength = rain.factor;
+            const targetOpacity = rainStrength > 0.1
+                ? (isNight ? 0.60 : 0.45) * Math.min(rainStrength * 1.5, 1)
+                : (isNight ? 0.30 : 0.05);
+            puddles.forEach(p => {
+                p.material.opacity += (targetOpacity - p.material.opacity) * Math.min(dt * 2, 1);
+            });
+        }
+
+        // ============ REGEN-LOGIK (nur automatisch) ============
+        function updateRain(dt, t) {
+            // Automatischer Monsun
+            if (rain.factor < 0.05 && t > rain.nextAuto) {
+                rain.target = 0.5 + Math.random() * 0.5;
+                rain.autoEnd = t + 15 + Math.random() * 20;
+            }
+            if (rain.target > 0 && t > rain.autoEnd) {
+                rain.target = 0;
+                rain.nextAuto = t + 40 + Math.random() * 60;
+            }
+            // Sanftes Ein-/Ausblenden
+            rain.factor += (rain.target - rain.factor) * Math.min(dt * 0.8, 1);
+            if (rain.factor < 0.01) rain.factor = 0;
+
+            rainMat.opacity = rain.factor * 0.75;
+
+            // Tropfen fallen
+            if (rain.factor > 0) {
+                const pos = rainGeo.attributes.position.array;
+                const speed = 28 * dt;
+                for (let i = 0; i < RAIN_COUNT; i++) {
+                    pos[i*3+1] -= speed;
+                    if (pos[i*3+1] < 0) {
+                        pos[i*3+1] = 28 + Math.random() * 4;
+                        pos[i*3]   = -60 + Math.random() * 120;
+                        pos[i*3+2] = -35 + Math.random() * 60;
+                    }
+                }
+                rainGeo.attributes.position.needsUpdate = true;
+            }
+            // Regen-Sound
+            if (rainGain && audioReady) {
+                rainGain.gain.rampTo(soundOn ? rain.factor * 0.12 : 0, 0.2);
+            }
+        }
+
+        // ============ BUTTONS ============
+        document.getElementById('reset-btn').addEventListener('click', () => { if (!isAnimating) resetGame(); });
+        document.getElementById('demo-btn').addEventListener('click', runDemo);
+        document.getElementById('sound-btn').addEventListener('click', () => {
+            soundOn = !soundOn;
+            applySoundState();
+        });
+
+        // Tageszeit-Buttons
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                frozenCt = parseFloat(btn.dataset.ct);
+                cyclePaused = true;
+                document.getElementById('cycle-btn').textContent = '▶️';
+            });
+        });
+
+        // Start/Stopp Tageszeit
+        document.getElementById('cycle-btn').addEventListener('click', (e) => {
+            if (cyclePaused) {
+                // Fortsetzen
+                cyclePaused = false;
+                cycleOffset = clock.elapsedTime - frozenCt * DAY_LEN;
+                e.target.textContent = '⏸️';
+            } else {
+                // Pausieren
+                cyclePaused = true;
+                frozenCt = ((clock.elapsedTime - cycleOffset) % DAY_LEN) / DAY_LEN;
+                e.target.textContent = '▶️';
+            }
+        });
+
+		// Moped-Motor Toggle
+		document.getElementById('moped-btn').addEventListener('click', () => {
+			mopedEngineOn = !mopedEngineOn;
+			const btn = document.getElementById('moped-btn');
+			if (mopedEngineOn) {
+				btn.classList.add('active');
+				if (mopedVolumeGain) mopedVolumeGain.gain.rampTo(0.08, 0.2);
+			} else {
+				btn.classList.remove('active');
+				if (mopedVolumeGain) mopedVolumeGain.gain.rampTo(0, 0.2);
+			}
+		});
+		
+        document.getElementById('disk-slider').addEventListener('input', e => {
+            diskCount = parseInt(e.target.value);
+            document.getElementById('disk-count-display').textContent = diskCount;
+            if (!isAnimating && !isDemoRunning) resetGame();
+        });
+
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            await Tone.start();
+            synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            synth.volume.value = -10;
+            audioReady = true;
+            await initAmbient();
+            applySoundState();
+            document.getElementById('audio-overlay').classList.add('opacity-0','pointer-events-none');
+        });
+
+        // ============ RENDER LOOP ============
+        buildDisks();
+        updateMinMoves();
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05);
+            const t = clock.elapsedTime;
+            controls.update();
+            updateConfetti(dt);
+            updateCity(dt, t);
+            if (selectedMesh) {
+                selectedMesh.material.emissiveIntensity = 0.5 + 0.35 * Math.sin(t * 5);
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth/innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+    </script>
+</body>
+</html>
