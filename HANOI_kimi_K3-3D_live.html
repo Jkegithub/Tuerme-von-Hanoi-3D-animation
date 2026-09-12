@@ -1031,11 +1031,11 @@
                 }, 4000 + Math.random()*10000);
             })();
 
-            // ===== Echter Verkehrslärm (lokale FLAC-Datei, gestreamt) =====
+            // ===== Echter Verkehrslärm (FLAC von GitHub, gestreamt) =====
             trafficGain = new Tone.Gain(0.25).toDestination();
             try {
                 trafficPlayer = new Tone.Player({
-                    url: "./traffic-heavy-busy-street-india.flac",
+                    url: "https://raw.githubusercontent.com/Jkegithub/Tuerme-von-Hanoi-3D-animation/main/traffic-heavy-busy-street-india.flac",
                     loop: true,
                     autostart: false,
                     fadeIn: 2,
@@ -1044,9 +1044,9 @@
 
                 await trafficPlayer.load();
                 if (soundOn && audioReady) trafficPlayer.start();
-                console.log("✓ Traffic-Sound geladen & spielt (loop)");
+                console.log("✓ Traffic-Sound von GitHub geladen & spielt (loop)");
             } catch (err) {
-                console.warn("⚠️ Traffic-Audio nicht gefunden – Datei muss im selben Ordner liegen wie die HTML:", err);
+                console.warn("⚠️ Traffic-Audio von GitHub konnte nicht geladen werden:", err);
                 trafficPlayer = null;
             }
 
