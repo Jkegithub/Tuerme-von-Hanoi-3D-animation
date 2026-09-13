@@ -54,6 +54,11 @@
             #game-message { font-size: 1rem !important; }
             #disk-count-display { font-size: 1.7rem !important; }
             #header-toggle-btn, #controls-toggle-btn { font-size: 1.3rem !important; padding: 0.5rem 0.9rem !important; }
+            /* Züge/Minimum/Zeit + Buttons standen nebeneinander und überragten den
+               Bildschirm nach rechts -> auf Mobil stattdessen untereinander */
+            #header-stats { flex-direction: column !important; align-items: stretch !important; gap: 0.6rem !important; }
+            #header-numbers { justify-content: space-around !important; width: 100%; }
+            #header-buttons { margin-left: 0 !important; align-items: center !important; }
         }
     </style>
 </head>
@@ -85,6 +90,7 @@
                 <button id="header-toggle-btn" title="Anzeige ein-/ausblenden" class="icon-btn pointer-events-auto px-2 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">▾</button>
             </div>
             <div id="header-stats" class="flex gap-5 text-center pointer-events-auto items-center">
+                <div id="header-numbers" class="flex gap-5">
                 <div>
                     <div class="text-[10px] text-slate-300 uppercase tracking-widest">Züge</div>
                     <div id="move-count" class="text-2xl font-bold font-display">0</div>
@@ -97,7 +103,8 @@
                     <div class="text-[10px] text-slate-300 uppercase tracking-widest">Zeit</div>
                     <div id="timer" class="text-2xl font-bold font-display">00:00</div>
                 </div>
-                <div class="flex flex-col gap-1 ml-2">
+                </div>
+                <div id="header-buttons" class="flex flex-col gap-1 ml-2">
 					<div class="flex gap-2 items-center">
 						<button id="sound-btn" title="Sound an/aus" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🔊</button>
 						<button id="cycle-btn" title="Tageszeit stoppen/fortsetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">⏸️</button>
