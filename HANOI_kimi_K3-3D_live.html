@@ -166,7 +166,7 @@
 
 		// Audio-Nodes
 		let humNoise, humGain, rainNoise, rainGain;
-		let thunderNoise, thunderGain;
+		let thunderNoise, thunderGain, thunderCrackGain;
 		let hornSynth, birdSynth;
 		let trafficPlayer, trafficGain;
 		
@@ -791,10 +791,25 @@
         gameGroup.add(goalRing);
 
         // ============ ZUSCHAUER (stehend/neugierig oder sitzend/wartend) ============
+        // Laufen/sitzen NUR entlang eines Rechtecks außerhalb der Spielfeld-Plattform
+        // (Plattform: BoxGeometry(SPACING*2+4, 0.7, 4.5) => Halbbreite SPACING+2, Halbtiefe 2.25).
+        // Ein Kreisradius würde bei manchen Winkeln trotzdem auf der Plattform landen,
+        // deshalb Rechteck-Umlaufbahn statt Kreis-Umlaufbahn.
+        const SPEC_HALF_X = SPACING + 2 + 1.6;   // klar außerhalb der Plattformbreite
+        const SPEC_HALF_Z = 2.25 + 1.8;          // klar außerhalb der Plattformtiefe & Laternen (z=3.6)
+        function specPerimeterPoint(u) {
+            const t = (((u % 1) + 1) % 1) * 4;
+            const seg = Math.floor(t), f = t - seg;
+            const W = SPEC_HALF_X, D = SPEC_HALF_Z;
+            if (seg === 0) return { x: -W + f*2*W, z: -D };
+            if (seg === 1) return { x: W, z: -D + f*2*D };
+            if (seg === 2) return { x: W - f*2*W, z: D };
+            return { x: -W, z: D - f*2*D };
+        }
         const spectators = [];
         const spectatorSkinTones = [0xd8a877, 0xc68a5f, 0x8d5a3a, 0xe8c39e];
         const spectatorClothes = [0x2255aa, 0xaa3344, 0x336644, 0xccaa22, 0x552277, 0x777777];
-        function buildSpectator(sitting, angle, radius) {
+        function buildSpectator(sitting, u, wander, dir) {
             const g = new THREE.Group();
             const skin = spectatorSkinTones[Math.floor(Math.random()*spectatorSkinTones.length)];
             const cloth = spectatorClothes[Math.floor(Math.random()*spectatorClothes.length)];
@@ -816,19 +831,25 @@
                 l1.position.set(0.1, 0.25, 0); g.add(l1);
                 const l2 = l1.clone(); l2.position.x = -0.1; g.add(l2);
             }
-            g.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
+            const p = specPerimeterPoint(u);
+            g.position.set(p.x, 0, p.z);
             g.lookAt(0, 0, 0);
             g.userData = {
-                sitting, angle, radius,
-                wander: !sitting && Math.random() > 0.35,
-                speed: (Math.random() > 0.5 ? 1 : -1) * (0.06 + Math.random()*0.08),
+                sitting, u, wander,
+                speed: dir * (0.008 + Math.random()*0.007),
                 bob: Math.random()*Math.PI*2
             };
             scene.add(g);
             spectators.push(g);
         }
-        for (let i = 0; i < 4; i++) buildSpectator(false, (i/4)*Math.PI*2 + Math.random()*0.5, 4.6 + Math.random()*1.3);
-        for (let i = 0; i < 3; i++) buildSpectator(true, 1.0 + i*1.7 + Math.random()*0.3, 4.1 + Math.random()*0.7);
+        // Feste Abstände auf dem Umlauf (u-Werte weit genug getrennt => keine Kollision)
+        buildSpectator(true,  0.03, false, 1);
+        buildSpectator(true,  0.28, false, 1);
+        buildSpectator(true,  0.53, false, 1);
+        buildSpectator(false, 0.78, false, 1);
+        buildSpectator(false, 0.15, true,  1);
+        buildSpectator(false, 0.42, true, -1);
+        buildSpectator(false, 0.66, true,  1);
 
         // ============ SCHEIBEN ============
         function createDiskMesh(size) {
@@ -1092,11 +1113,15 @@
             const rainFilter = new Tone.Filter(2500, "highpass");
             rainNoise.connect(rainFilter); rainFilter.connect(rainGain);
 
-            // Donner
+            // Donner: tiefes Rumpeln + kurzer harter Krachen-Anteil aus derselben Rauschquelle
             thunderNoise = new Tone.Noise("brown").start();
             thunderGain = new Tone.Gain(0).toDestination();
-            const thunderFilter = new Tone.Filter(220, "lowpass");
+            const thunderFilter = new Tone.Filter(180, "lowpass");
             thunderNoise.connect(thunderFilter); thunderFilter.connect(thunderGain);
+
+            thunderCrackGain = new Tone.Gain(0).toDestination();
+            const crackFilter = new Tone.Filter(900, "highpass");
+            thunderNoise.connect(crackFilter); crackFilter.connect(thunderCrackGain);
 
             // Hupen (tiefer, Sägezahn, kurzes Doppel-Beep – klar als Hupe statt Glocke erkennbar)
             hornSynth = new Tone.Synth({
@@ -1181,11 +1206,18 @@
         function triggerThunder() {
             if (!(soundOn && audioReady && thunderGain)) return;
             const now = Tone.now();
-            const vol = 0.22 + Math.random()*0.22;
+            // Krachen: kurz, hart, sofort
+            const crackVol = 0.55 + Math.random()*0.3;
+            thunderCrackGain.gain.cancelScheduledValues(now);
+            thunderCrackGain.gain.setValueAtTime(0, now);
+            thunderCrackGain.gain.linearRampToValueAtTime(crackVol, now + 0.015);
+            thunderCrackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            // Rumpeln: lang, tief, klingt danach aus
+            const vol = 0.45 + Math.random()*0.35;
             thunderGain.gain.cancelScheduledValues(now);
             thunderGain.gain.setValueAtTime(0, now);
-            thunderGain.gain.linearRampToValueAtTime(vol, now + 0.09);
-            thunderGain.gain.exponentialRampToValueAtTime(0.001, now + 2 + Math.random()*2);
+            thunderGain.gain.linearRampToValueAtTime(vol, now + 0.12);
+            thunderGain.gain.exponentialRampToValueAtTime(0.001, now + 2.8 + Math.random()*2.5);
         }
 		function applySoundState() {
 			const btn = document.getElementById('sound-btn');
@@ -1271,15 +1303,16 @@
                 : sunElev > 0 ? (ct < 0.25 ? '🌅' : '🌇')
                 : '🌙';
 
-            // --- Zuschauer ---
+            // --- Zuschauer (bleiben strikt auf der Rechteckbahn außerhalb der Plattform) ---
             spectators.forEach(sp => {
-                const u = sp.userData;
-                if (u.wander) {
-                    u.angle += u.speed * dt;
-                    sp.position.set(Math.cos(u.angle)*u.radius, 0, Math.sin(u.angle)*u.radius);
+                const ud = sp.userData;
+                if (ud.wander) {
+                    ud.u = ud.u + ud.speed * dt;
+                    const p = specPerimeterPoint(ud.u);
+                    sp.position.set(p.x, 0, p.z);
                     sp.lookAt(0, 0, 0);
                 }
-                sp.position.y = Math.sin(t*1.4 + u.bob) * 0.02;
+                sp.position.y = Math.sin(t*1.4 + ud.bob) * 0.02;
             });
 
 			// --- Mopeds ---
@@ -1400,9 +1433,12 @@
             }
 
             // Blitz & Donner (nur bei kräftigem Schauer)
-            if (rain.factor > 0.4 && Math.random() < rain.factor * dt * 0.12) {
-                lightningFlash = 2.2 + Math.random()*1.6;
-                setTimeout(triggerThunder, 250 + Math.random()*1800);
+            if (rain.factor > 0.35 && Math.random() < rain.factor * dt * 0.35) {
+                lightningFlash = 4.5 + Math.random()*3.5;
+                setTimeout(triggerThunder, 150 + Math.random()*1200);
+                if (Math.random() > 0.6) {
+                    setTimeout(() => { lightningFlash = Math.max(lightningFlash, 3 + Math.random()*2.5); }, 90 + Math.random()*120);
+                }
             }
         }
 
