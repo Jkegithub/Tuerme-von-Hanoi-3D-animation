@@ -166,7 +166,7 @@
 
 		// Audio-Nodes
 		let humNoise, humGain, rainNoise, rainGain;
-		let thunderNoise, thunderGain, thunderCrackGain;
+		let thunderNoise, thunderGain, thunderCrackGain, thunderFilter;
 		let hornSynth, birdSynth;
 		let trafficPlayer, trafficGain;
 		
@@ -180,6 +180,7 @@
         // Regen: nur automatisch
         const rain = { factor: 0, target: 0, nextAuto: 20 + Math.random() * 25, autoEnd: 0 };
         let lightningFlash = 0;
+        const LIGHTNING_TINT = new THREE.Color(0xd9e8ff);
 
         // ============ THREE SETUP ============
         const container = document.getElementById('canvas-container');
@@ -797,10 +798,13 @@
         // deshalb Rechteck-Umlaufbahn statt Kreis-Umlaufbahn.
         const SPEC_HALF_X = SPACING + 2 + 1.6;   // klar außerhalb der Plattformbreite
         const SPEC_HALF_Z = 2.25 + 1.8;          // klar außerhalb der Plattformtiefe & Laternen (z=3.6)
-        function specPerimeterPoint(u) {
+        // Jede Spur ist ein eigenes, um "lane" Einheiten größeres Rechteck – dadurch können
+        // sich Figuren auf unterschiedlichen Spuren nie kreuzen (Sitzende: Spur 0, jeder
+        // Wanderer bekommt seine eigene Spur, statt dass alle dieselbe Linie teilen).
+        function specPerimeterPoint(u, lane = 0) {
             const t = (((u % 1) + 1) % 1) * 4;
             const seg = Math.floor(t), f = t - seg;
-            const W = SPEC_HALF_X, D = SPEC_HALF_Z;
+            const W = SPEC_HALF_X + lane, D = SPEC_HALF_Z + lane;
             if (seg === 0) return { x: -W + f*2*W, z: -D };
             if (seg === 1) return { x: W, z: -D + f*2*D };
             if (seg === 2) return { x: W - f*2*W, z: D };
@@ -809,7 +813,7 @@
         const spectators = [];
         const spectatorSkinTones = [0xd8a877, 0xc68a5f, 0x8d5a3a, 0xe8c39e];
         const spectatorClothes = [0x2255aa, 0xaa3344, 0x336644, 0xccaa22, 0x552277, 0x777777];
-        function buildSpectator(sitting, u, wander, dir) {
+        function buildSpectator(sitting, u, wander, dir, lane) {
             const g = new THREE.Group();
             const skin = spectatorSkinTones[Math.floor(Math.random()*spectatorSkinTones.length)];
             const cloth = spectatorClothes[Math.floor(Math.random()*spectatorClothes.length)];
@@ -831,25 +835,27 @@
                 l1.position.set(0.1, 0.25, 0); g.add(l1);
                 const l2 = l1.clone(); l2.position.x = -0.1; g.add(l2);
             }
-            const p = specPerimeterPoint(u);
+            const p = specPerimeterPoint(u, lane);
             g.position.set(p.x, 0, p.z);
             g.lookAt(0, 0, 0);
             g.userData = {
-                sitting, u, wander,
+                sitting, u, wander, lane,
                 speed: dir * (0.008 + Math.random()*0.007),
                 bob: Math.random()*Math.PI*2
             };
             scene.add(g);
             spectators.push(g);
         }
-        // Feste Abstände auf dem Umlauf (u-Werte weit genug getrennt => keine Kollision)
-        buildSpectator(true,  0.03, false, 1);
-        buildSpectator(true,  0.28, false, 1);
-        buildSpectator(true,  0.53, false, 1);
-        buildSpectator(false, 0.78, false, 1);
-        buildSpectator(false, 0.15, true,  1);
-        buildSpectator(false, 0.42, true, -1);
-        buildSpectator(false, 0.66, true,  1);
+        // Sitzende + der eine statische Steher teilen sich Spur 0 (sie bewegen sich nicht,
+        // u-Werte weit genug getrennt => keine Kollision). Jeder Wanderer bekommt eine
+        // eigene, weiter außen liegende Spur, damit sich niemand durchdringen kann.
+        buildSpectator(true,  0.03, false, 1, 0);
+        buildSpectator(true,  0.28, false, 1, 0);
+        buildSpectator(true,  0.53, false, 1, 0);
+        buildSpectator(false, 0.78, false, 1, 0);
+        buildSpectator(false, 0.15, true,  1, 0.7);
+        buildSpectator(false, 0.42, true, -1, 1.4);
+        buildSpectator(false, 0.66, true,  1, 2.1);
 
         // ============ SCHEIBEN ============
         function createDiskMesh(size) {
@@ -1116,7 +1122,7 @@
             // Donner: tiefes Rumpeln + kurzer harter Krachen-Anteil aus derselben Rauschquelle
             thunderNoise = new Tone.Noise("brown").start();
             thunderGain = new Tone.Gain(0).toDestination();
-            const thunderFilter = new Tone.Filter(180, "lowpass");
+            thunderFilter = new Tone.Filter(220, "lowpass");
             thunderNoise.connect(thunderFilter); thunderFilter.connect(thunderGain);
 
             thunderCrackGain = new Tone.Gain(0).toDestination();
@@ -1203,21 +1209,24 @@
                 }, 3000 + Math.random()*8000);
             })();
         }
-        function triggerThunder() {
+        function triggerThunder(dist) {
             if (!(soundOn && audioReady && thunderGain)) return;
             const now = Tone.now();
-            // Krachen: kurz, hart, sofort
-            const crackVol = 0.55 + Math.random()*0.3;
+            const near = 1 - dist;
+            // Krachen: nur bei nahen Blitzen scharf und laut, bei weiten kaum vorhanden
+            const crackVol = Math.max(0, near - 0.3) * 0.85;
             thunderCrackGain.gain.cancelScheduledValues(now);
             thunderCrackGain.gain.setValueAtTime(0, now);
             thunderCrackGain.gain.linearRampToValueAtTime(crackVol, now + 0.015);
-            thunderCrackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-            // Rumpeln: lang, tief, klingt danach aus
-            const vol = 0.45 + Math.random()*0.35;
+            thunderCrackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2 + near*0.2);
+            // Rumpeln: nah = laut/kurz/präsent, weit = leise/lang/dumpf (Tiefpass sinkt mit Distanz)
+            thunderFilter.frequency.value = 260 - dist*140;
+            const vol = 0.22 + near*0.55;
+            const dur = 2 + dist*4.5;
             thunderGain.gain.cancelScheduledValues(now);
             thunderGain.gain.setValueAtTime(0, now);
-            thunderGain.gain.linearRampToValueAtTime(vol, now + 0.12);
-            thunderGain.gain.exponentialRampToValueAtTime(0.001, now + 2.8 + Math.random()*2.5);
+            thunderGain.gain.linearRampToValueAtTime(vol, now + 0.08 + near*0.06);
+            thunderGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
         }
 		function applySoundState() {
 			const btn = document.getElementById('sound-btn');
@@ -1308,7 +1317,7 @@
                 const ud = sp.userData;
                 if (ud.wander) {
                     ud.u = ud.u + ud.speed * dt;
-                    const p = specPerimeterPoint(ud.u);
+                    const p = specPerimeterPoint(ud.u, ud.lane);
                     sp.position.set(p.x, 0, p.z);
                     sp.lookAt(0, 0, 0);
                 }
@@ -1376,12 +1385,14 @@
             skyMat.uniforms.bottom.value.multiplyScalar(stormDim);
             scene.fog.color.multiplyScalar(stormDim);
 
-            // --- Blitz-Aufhellung (klingt über ~0.5s ab) ---
+            // --- Blitz-Aufhellung: kühles Blau-Weiß statt der warmen Tageslichtfarbe ---
             if (lightningFlash > 0) {
+                const flashT = Math.min(1, lightningFlash * 0.22);
+                dirLight.color.lerp(LIGHTNING_TINT, flashT);
                 dirLight.intensity += lightningFlash;
                 hemi.intensity += lightningFlash * 0.5;
-                skyMat.uniforms.top.value.addScalar(lightningFlash * 0.15);
-                skyMat.uniforms.middle.value.addScalar(lightningFlash * 0.15);
+                skyMat.uniforms.top.value.lerp(LIGHTNING_TINT, flashT * 0.6).addScalar(lightningFlash * 0.1);
+                skyMat.uniforms.middle.value.lerp(LIGHTNING_TINT, flashT * 0.6).addScalar(lightningFlash * 0.1);
                 lightningFlash = Math.max(0, lightningFlash - dt * 4.5);
             }
 
@@ -1432,12 +1443,15 @@
                 rainGain.gain.rampTo(soundOn ? rain.factor * 0.12 : 0, 0.2);
             }
 
-            // Blitz & Donner (nur bei kräftigem Schauer)
+            // Blitz & Donner (nur bei kräftigem Schauer) – Entfernung bestimmt Verzögerung
+            // (Schall ~3s/km), Helligkeit, Lautstärke und Klangfarbe, wie bei echtem Gewitter.
             if (rain.factor > 0.35 && Math.random() < rain.factor * dt * 0.35) {
-                lightningFlash = 4.5 + Math.random()*3.5;
-                setTimeout(triggerThunder, 150 + Math.random()*1200);
-                if (Math.random() > 0.6) {
-                    setTimeout(() => { lightningFlash = Math.max(lightningFlash, 3 + Math.random()*2.5); }, 90 + Math.random()*120);
+                const dist = Math.random();           // 0 = direkt über dem See, 1 = am Horizont
+                const near = 1 - dist;
+                lightningFlash = 1.5 + near*7;
+                setTimeout(() => triggerThunder(dist), 200 + dist*3200);
+                if (near > 0.5 && Math.random() > 0.5) {
+                    setTimeout(() => { lightningFlash = Math.max(lightningFlash, 3 + near*4); }, 70 + Math.random()*100);
                 }
             }
         }
