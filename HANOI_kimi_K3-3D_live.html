@@ -83,6 +83,7 @@
 					<div class="flex gap-2 items-center">
 						<button id="sound-btn" title="Sound an/aus" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🔊</button>
 						<button id="cycle-btn" title="Tageszeit stoppen/fortsetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">⏸️</button>
+						<button id="rezoom-btn" title="Kamera zurücksetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🎯</button>
 						<div id="daynight-indicator" class="text-lg" title="Tageszeit">🌞</div>
 					</div>
                     <div class="flex gap-1 justify-center">
@@ -147,6 +148,13 @@
         const ROAD_Z = -18;
         const BRIDGE_X0 = 20, BRIDGE_X1 = 56;      // Brücken-Spannweite (See x: 22..54)
         const BRIDGE_Y = 0.72;                      // Fahrbahnhöhe der Brücke
+        const BRIDGE_RAMP = 5;                       // Länge der Auf-/Abfahrt (statt hartem Sprung)
+        function bridgeHeightAt(x) {
+            if (x < BRIDGE_X0 || x > BRIDGE_X1) return 0;
+            if (x < BRIDGE_X0 + BRIDGE_RAMP) return BRIDGE_Y * (x - BRIDGE_X0) / BRIDGE_RAMP;
+            if (x > BRIDGE_X1 - BRIDGE_RAMP) return BRIDGE_Y * (BRIDGE_X1 - x) / BRIDGE_RAMP;
+            return BRIDGE_Y;
+        }
 
         // ============ STATE ============
         let towers = [[], [], []];
@@ -1327,8 +1335,7 @@
 			// --- Mopeds ---
 			mopeds.forEach(m => {
 				m.position.x += m.userData.dir * m.userData.speed * dt;
-				const onBridge = m.position.x > BRIDGE_X0 && m.position.x < BRIDGE_X1;
-				const baseY = onBridge ? BRIDGE_Y : 0;
+				const baseY = bridgeHeightAt(m.position.x);
 				m.position.y = baseY + Math.abs(Math.sin(t * 18 + m.userData.speed)) * 0.02;
 				if (m.userData.dir > 0 && m.position.x > 85) m.position.x = -85;
 				if (m.userData.dir < 0 && m.position.x < -85) m.position.x = 85;
@@ -1488,6 +1495,12 @@
                 frozenCt = ((clock.elapsedTime - cycleOffset) % DAY_LEN) / DAY_LEN;
                 e.target.textContent = '▶️';
             }
+        });
+
+        document.getElementById('rezoom-btn').addEventListener('click', () => {
+            camera.position.set(13, 9, 14);
+            controls.target.set(0, 2.5, 0);
+            controls.update();
         });
 
         document.getElementById('disk-slider').addEventListener('input', e => {
