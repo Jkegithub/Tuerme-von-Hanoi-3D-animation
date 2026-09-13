@@ -41,16 +41,19 @@
         .time-btn { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
         .time-btn.active { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
 
-        /* Größere Touch-Ziele & Schrift auf schmalen Bildschirmen (Handy) */
+        /* Größere Touch-Ziele & Schrift auf schmalen Bildschirmen (Handy).
+           !important nötig, weil Tailwinds CDN-Skript seine Utility-Klassen
+           (text-lg, px-3 …) per JS zur Laufzeit injiziert und je nach
+           Ladereihenfolge im <head> gegen unsere Regel gewinnen würde. */
         @media (max-width: 640px) {
-            .icon-btn { font-size: 1.5rem; padding: 0.55rem 0.75rem; }
-            .time-btn { font-size: 1.2rem; padding: 0.5rem 0.65rem; }
-            #daynight-indicator { font-size: 1.5rem; }
-            #move-count, #min-moves, #timer { font-size: 1.7rem; }
-            #reset-btn, #demo-btn { padding: 1rem 1.2rem; font-size: 1.05rem; }
-            #game-message { font-size: 1rem; }
-            #disk-count-display { font-size: 1.7rem; }
-            #header-toggle-btn, #controls-toggle-btn { font-size: 1.3rem; padding: 0.5rem 0.9rem; }
+            .icon-btn { font-size: 1.5rem !important; padding: 0.55rem 0.75rem !important; }
+            .time-btn { font-size: 1.2rem !important; padding: 0.5rem 0.65rem !important; }
+            #daynight-indicator { font-size: 1.5rem !important; }
+            #move-count, #min-moves, #timer { font-size: 1.7rem !important; }
+            #reset-btn, #demo-btn { padding: 1rem 1.2rem !important; font-size: 1.05rem !important; }
+            #game-message { font-size: 1rem !important; }
+            #disk-count-display { font-size: 1.7rem !important; }
+            #header-toggle-btn, #controls-toggle-btn { font-size: 1.3rem !important; padding: 0.5rem 0.9rem !important; }
         }
     </style>
 </head>
