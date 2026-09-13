@@ -488,10 +488,27 @@
         // --- Brücke (rote Holzbrücke im Stil der Huc-Brücke) ---
         const bridgeGroup = new THREE.Group();
         const deckMat = new THREE.MeshStandardMaterial({ color: 0x9a3a2e, roughness: 0.7 });
-        const deck = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE_X1 - BRIDGE_X0, 0.35, 4.6), deckMat);
-        deck.position.set((BRIDGE_X0 + BRIDGE_X1)/2, BRIDGE_Y - 0.18, ROAD_Z);
-        deck.castShadow = true; deck.receiveShadow = true;
-        bridgeGroup.add(deck);
+        // Fahrbahn folgt derselben Rampe wie die Fahrzeuge (bridgeHeightAt): Auffahrt,
+        // flaches Mittelstück, Abfahrt – statt eines einzigen flachen Decks mit hartem
+        // Sprung an den Brückenenden.
+        const rampAngle = Math.atan2(BRIDGE_Y, BRIDGE_RAMP);
+        const rampLen = Math.hypot(BRIDGE_RAMP, BRIDGE_Y);
+        const deckUp = new THREE.Mesh(new THREE.BoxGeometry(rampLen, 0.35, 4.6), deckMat);
+        deckUp.position.set(BRIDGE_X0 + BRIDGE_RAMP/2, BRIDGE_Y/2 - 0.18, ROAD_Z);
+        deckUp.rotation.z = rampAngle;
+        deckUp.castShadow = true; deckUp.receiveShadow = true;
+        bridgeGroup.add(deckUp);
+
+        const deckMid = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE_X1 - BRIDGE_X0 - 2*BRIDGE_RAMP, 0.35, 4.6), deckMat);
+        deckMid.position.set((BRIDGE_X0 + BRIDGE_X1)/2, BRIDGE_Y - 0.18, ROAD_Z);
+        deckMid.castShadow = true; deckMid.receiveShadow = true;
+        bridgeGroup.add(deckMid);
+
+        const deckDown = new THREE.Mesh(new THREE.BoxGeometry(rampLen, 0.35, 4.6), deckMat);
+        deckDown.position.set(BRIDGE_X1 - BRIDGE_RAMP/2, BRIDGE_Y/2 - 0.18, ROAD_Z);
+        deckDown.rotation.z = -rampAngle;
+        deckDown.castShadow = true; deckDown.receiveShadow = true;
+        bridgeGroup.add(deckDown);
 
         // Leichte Wölbung: zwei seitliche Trägerbögen
         const archMat = new THREE.MeshStandardMaterial({ color: 0x7a2a20, roughness: 0.75 });
@@ -502,14 +519,22 @@
             bridgeGroup.add(arch);
         });
 
-        // Geländer
+        // Geländer folgt derselben Rampe (Auffahrt/Mittelstück/Abfahrt) wie die Fahrbahn
         [-2.15, 2.15].forEach(dz => {
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE_X1 - BRIDGE_X0, 0.1, 0.1), deckMat);
-            rail.position.set((BRIDGE_X0 + BRIDGE_X1)/2, BRIDGE_Y + 0.55, ROAD_Z + dz);
-            bridgeGroup.add(rail);
+            const railUp = new THREE.Mesh(new THREE.BoxGeometry(rampLen, 0.1, 0.1), deckMat);
+            railUp.position.set(BRIDGE_X0 + BRIDGE_RAMP/2, BRIDGE_Y/2 + 0.55, ROAD_Z + dz);
+            railUp.rotation.z = rampAngle;
+            bridgeGroup.add(railUp);
+            const railMid = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE_X1 - BRIDGE_X0 - 2*BRIDGE_RAMP, 0.1, 0.1), deckMat);
+            railMid.position.set((BRIDGE_X0 + BRIDGE_X1)/2, BRIDGE_Y + 0.55, ROAD_Z + dz);
+            bridgeGroup.add(railMid);
+            const railDown = new THREE.Mesh(new THREE.BoxGeometry(rampLen, 0.1, 0.1), deckMat);
+            railDown.position.set(BRIDGE_X1 - BRIDGE_RAMP/2, BRIDGE_Y/2 + 0.55, ROAD_Z + dz);
+            railDown.rotation.z = -rampAngle;
+            bridgeGroup.add(railDown);
             for (let x = BRIDGE_X0 + 1; x < BRIDGE_X1; x += 2.4) {
                 const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), deckMat);
-                post.position.set(x, BRIDGE_Y + 0.28, ROAD_Z + dz);
+                post.position.set(x, bridgeHeightAt(x) + 0.28, ROAD_Z + dz);
                 bridgeGroup.add(post);
             }
         });
