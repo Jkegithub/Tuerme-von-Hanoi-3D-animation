@@ -40,6 +40,18 @@
         .overlay-fade { transition:opacity .6s; }
         .time-btn { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
         .time-btn.active { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
+
+        /* Größere Touch-Ziele & Schrift auf schmalen Bildschirmen (Handy) */
+        @media (max-width: 640px) {
+            .icon-btn { font-size: 1.5rem; padding: 0.55rem 0.75rem; }
+            .time-btn { font-size: 1.2rem; padding: 0.5rem 0.65rem; }
+            #daynight-indicator { font-size: 1.5rem; }
+            #move-count, #min-moves, #timer { font-size: 1.7rem; }
+            #reset-btn, #demo-btn { padding: 1rem 1.2rem; font-size: 1.05rem; }
+            #game-message { font-size: 1rem; }
+            #disk-count-display { font-size: 1.7rem; }
+            #header-toggle-btn, #controls-toggle-btn { font-size: 1.3rem; padding: 0.5rem 0.9rem; }
+        }
     </style>
 </head>
 <body>
@@ -62,11 +74,14 @@
     <!-- Header -->
     <header class="fixed top-0 left-0 right-0 z-40 px-4 pt-4 pointer-events-none">
         <div class="max-w-5xl mx-auto glass-panel rounded-2xl px-6 py-3 flex flex-wrap justify-between items-center gap-4">
-            <div>
-                <h1 class="text-xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-red-400">TÜRME VON HANOI 3D</h1>
-                <p class="text-[11px] text-slate-300">Alle Scheiben zum rechten Turm (ZIEL)</p>
+            <div class="flex items-center gap-3">
+                <div>
+                    <h1 class="text-xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-red-400">TÜRME VON HANOI 3D</h1>
+                    <p class="text-[11px] text-slate-300">Alle Scheiben zum rechten Turm (ZIEL)</p>
+                </div>
+                <button id="header-toggle-btn" title="Anzeige ein-/ausblenden" class="icon-btn pointer-events-auto px-2 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">▾</button>
             </div>
-            <div class="flex gap-5 text-center pointer-events-auto items-center">
+            <div id="header-stats" class="flex gap-5 text-center pointer-events-auto items-center">
                 <div>
                     <div class="text-[10px] text-slate-300 uppercase tracking-widest">Züge</div>
                     <div id="move-count" class="text-2xl font-bold font-display">0</div>
@@ -99,7 +114,11 @@
 
     <!-- Controls -->
     <div class="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pointer-events-none">
-        <div class="max-w-4xl mx-auto glass-panel rounded-2xl p-5 grid grid-cols-1 md:grid-cols-3 gap-5 pointer-events-auto">
+        <div class="max-w-4xl mx-auto pointer-events-auto">
+            <div class="flex justify-center">
+                <button id="controls-toggle-btn" title="Steuerung ein-/ausblenden" class="icon-btn px-4 py-1 rounded-t-lg border border-b-0 border-slate-500 bg-slate-800/80 text-sm leading-none">▾ Steuerung</button>
+            </div>
+            <div id="controls-body" class="glass-panel rounded-2xl p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
             <div class="flex flex-col gap-2 justify-center">
                 <label class="text-xs text-slate-300 font-bold uppercase tracking-wider">Anzahl der Scheiben</label>
                 <div class="flex items-center gap-4">
@@ -122,6 +141,7 @@
             </div>
             <div class="flex items-center justify-center md:justify-end">
                 <div id="game-message" class="text-sm text-amber-200 font-medium text-center md:text-right">Klicke einen Turm, um eine Scheibe zu wählen</div>
+            </div>
             </div>
         </div>
     </div>
@@ -1526,6 +1546,18 @@
             camera.position.set(13, 9, 14);
             controls.target.set(0, 2.5, 0);
             controls.update();
+        });
+
+        // Panels ein-/ausblenden (mehr Platz auf kleinen Bildschirmen)
+        document.getElementById('header-toggle-btn').addEventListener('click', (e) => {
+            const el = document.getElementById('header-stats');
+            el.classList.toggle('hidden');
+            e.target.textContent = el.classList.contains('hidden') ? '▸' : '▾';
+        });
+        document.getElementById('controls-toggle-btn').addEventListener('click', (e) => {
+            const el = document.getElementById('controls-body');
+            el.classList.toggle('hidden');
+            e.target.textContent = el.classList.contains('hidden') ? '▸ Steuerung' : '▾ Steuerung';
         });
 
         document.getElementById('disk-slider').addEventListener('input', e => {
