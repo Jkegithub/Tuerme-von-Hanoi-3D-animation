@@ -82,7 +82,6 @@
                 <div class="flex flex-col gap-1 ml-2">
 					<div class="flex gap-2">
 						<button id="sound-btn" title="Sound an/aus" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🔊</button>
-						<button id="moped-btn" title="Moped-Sound an/aus" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🏍️</button>
 						<button id="cycle-btn" title="Tageszeit stoppen/fortsetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">⏸️</button>
 					</div>
                     <div class="flex gap-1 justify-center">
@@ -168,12 +167,6 @@
 		// Audio-Nodes
 		let humNoise, humGain, rainNoise, rainGain;
 		let hornSynth, birdSynth;
-		let mopedEngineNoise, mopedEngineFilter, mopedEngineGain; // NEU: Moped-Motorsound
-
-		// Moped-Motor (Synth statt Noise für feinen Sound)
-		let mopedSynth;
-		let mopedVolumeGain;
-		let mopedEngineOn = false;  // NEU: Schalter
 		let trafficPlayer, trafficGain;
 		
         // Tag/Nacht
@@ -1051,15 +1044,28 @@
                 trafficPlayer = null;
             }
 
-            // Vogelgezwitscher (nur tagsüber)
-            birdSynth = new Tone.Synth({ oscillator: { type: "sine" }, volume: -26 }).toDestination();
+            // Vogelgezwitscher (nur tagsüber) – "chirp chirp" mit Tonhöhen-Gleiten statt Glockenton
+            birdSynth = new Tone.Synth({
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.005, decay: 0.08, sustain: 0, release: 0.05 },
+                volume: -26
+            }).toDestination();
+            function birdChirp(base) {
+                if (!(soundOn && audioReady && sunElev > 0)) return;
+                const now = Tone.now();
+                birdSynth.frequency.setValueAtTime(base, now);
+                birdSynth.frequency.exponentialRampToValueAtTime(base * 1.5, now + 0.05);
+                birdSynth.triggerAttackRelease(base, "32n", now);
+            }
             (function scheduleBird() {
                 setTimeout(() => {
                     if (soundOn && audioReady && sunElev > 0) {
-                        const base = 2200 + Math.random()*800;
-                        birdSynth.triggerAttackRelease(base, "32n");
-                        setTimeout(() => soundOn && sunElev > 0 && birdSynth.triggerAttackRelease(base*1.2, "64n"), 120);
-                        setTimeout(() => soundOn && sunElev > 0 && birdSynth.triggerAttackRelease(base*0.9, "32n"), 260);
+                        const base = 2000 + Math.random()*700;
+                        birdChirp(base);
+                        setTimeout(() => birdChirp(base * (0.85 + Math.random()*0.3)), 110 + Math.random()*60);
+                        if (Math.random() > 0.5) {
+                            setTimeout(() => birdChirp(base * (0.9 + Math.random()*0.4)), 260 + Math.random()*80);
+                        }
                     }
                     scheduleBird();
                 }, 3000 + Math.random()*8000);
@@ -1148,8 +1154,6 @@
             ind.textContent = sunElev > 0.4 ? '🌞' : sunElev > 0 ? '🌇' : '';
 
 			// --- Mopeds ---
-			let closestDist = Infinity;
-			let totalSpeedFactor = 0;
 			mopeds.forEach(m => {
 				m.position.x += m.userData.dir * m.userData.speed * dt;
 				const onBridge = m.position.x > BRIDGE_X0 && m.position.x < BRIDGE_X1;
@@ -1157,22 +1161,7 @@
 				m.position.y = baseY + Math.abs(Math.sin(t * 18 + m.userData.speed)) * 0.02;
 				if (m.userData.dir > 0 && m.position.x > 85) m.position.x = -85;
 				if (m.userData.dir < 0 && m.position.x < -85) m.position.x = 85;
-			
-				// NEU: Entfernung zur Kamera für Motorsound-Lautstärke
-				const dist = m.position.distanceTo(camera.position);
-				if (dist < closestDist) closestDist = dist;
 			});
-			
-			// NEU: Motorsound-Lautstärke & Tonhöhe abhängig von Nähe
-			if (mopedEngineGain && audioReady) {
-				const targetVol = soundOn
-					? THREE.MathUtils.clamp(THREE.MathUtils.mapLinear(closestDist, 3, 45, 0.28, 0), 0, 0.28)
-					: 0;
-				mopedEngineGain.gain.rampTo(targetVol, 0.3);
-				// Je näher, desto höher/aggressiver der Motorklang
-				const targetFreq = THREE.MathUtils.mapLinear(closestDist, 3, 45, 1400, 700);
-				mopedEngineFilter.frequency.rampTo(THREE.MathUtils.clamp(targetFreq, 700, 1400), 0.3);
-			}
 
             // --- Wolken ---
             clouds.forEach(c => {
@@ -1214,6 +1203,16 @@
 
             // --- REGEN (nur automatisch) ---
             updateRain(dt, t);
+
+            // --- Regen dunkelt Himmel & Sonne ab ---
+            const stormDim = 1 - rain.factor * 0.55;
+            dirLight.intensity *= stormDim;
+            hemi.intensity *= stormDim;
+            sunGlow.material.opacity *= stormDim;
+            skyMat.uniforms.top.value.multiplyScalar(stormDim);
+            skyMat.uniforms.middle.value.multiplyScalar(stormDim);
+            skyMat.uniforms.bottom.value.multiplyScalar(stormDim);
+            scene.fog.color.multiplyScalar(stormDim);
 
             // --- PFÜTZEN (dynamische Opacity) ---
             const isNight = sunElev < 0;
@@ -1297,19 +1296,6 @@
             }
         });
 
-		// Moped-Motor Toggle
-		document.getElementById('moped-btn').addEventListener('click', () => {
-			mopedEngineOn = !mopedEngineOn;
-			const btn = document.getElementById('moped-btn');
-			if (mopedEngineOn) {
-				btn.classList.add('active');
-				if (mopedVolumeGain) mopedVolumeGain.gain.rampTo(0.08, 0.2);
-			} else {
-				btn.classList.remove('active');
-				if (mopedVolumeGain) mopedVolumeGain.gain.rampTo(0, 0.2);
-			}
-		});
-		
         document.getElementById('disk-slider').addEventListener('input', e => {
             diskCount = parseInt(e.target.value);
             document.getElementById('disk-count-display').textContent = diskCount;
