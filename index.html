@@ -40,6 +40,9 @@
         .overlay-fade { transition:opacity .6s; }
         .time-btn { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
         .time-btn.active { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
+        #controls-body { max-height: min(68vh, 620px); overflow-y:auto; }
+        .settings-panel { max-height: min(80vh, 680px); overflow-y:auto; }
+        .mixer-row { display:grid; grid-template-columns:5.5rem 1fr 3rem; align-items:center; gap:.65rem; }
 
         /* Größere Touch-Ziele & Schrift auf schmalen Bildschirmen (Handy).
            !important nötig, weil Tailwinds CDN-Skript seine Utility-Klassen
@@ -54,6 +57,9 @@
             #game-message { font-size: 1rem !important; }
             #disk-count-display { font-size: 1.7rem !important; }
             #header-toggle-btn, #controls-toggle-btn { font-size: 1.3rem !important; padding: 0.5rem 0.9rem !important; }
+            #controls-body { max-height:58vh; padding:.75rem !important; gap:.65rem !important; }
+            .settings-panel { width:calc(100vw - 1.5rem); max-height:82vh; padding:1rem !important; }
+            .mixer-row { grid-template-columns:4.7rem 1fr 2.7rem; gap:.4rem; }
             /* Züge/Minimum/Zeit + Buttons standen nebeneinander und überragten den
                Bildschirm nach rechts -> auf Mobil stattdessen untereinander */
             #header-stats { flex-direction: column !important; align-items: stretch !important; gap: 0.6rem !important; }
@@ -73,7 +79,7 @@
             <p class="text-slate-300 mb-2">🖱️ Ziehen: Kamera drehen · Mausrad: Zoomen</p>
             <p class="text-slate-400 mb-2 text-sm">🌇 Tag/Nacht-Zyklus · 🌧️ Monsun-Regen · 🚣 Sampan-Boote · 🔊 Umgebungsgeräusche</p>
             <p class="text-slate-500 mb-8 text-xs">Klicken aktiviert den Sound</p>
-            <button id="start-btn" class="px-10 py-4 bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold rounded-full text-xl transition-all shadow-[0_0_25px_rgba(251,191,36,0.5)]">
+            <button id="start-btn" aria-label="Spiel starten und Sound aktivieren" class="px-10 py-4 bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold rounded-full text-xl transition-all shadow-[0_0_25px_rgba(251,191,36,0.5)] disabled:opacity-60 disabled:cursor-wait">
                 SPIEL STARTEN
             </button>
         </div>
@@ -87,7 +93,7 @@
                     <h1 class="text-xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-red-400">TÜRME VON HANOI 3D</h1>
                     <p class="text-[11px] text-slate-300">Alle Scheiben zum rechten Turm (ZIEL)</p>
                 </div>
-                <button id="header-toggle-btn" title="Anzeige ein-/ausblenden" class="icon-btn pointer-events-auto px-2 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">▾</button>
+                <button id="header-toggle-btn" title="Anzeige ein-/ausblenden" aria-label="Statusanzeige ein- oder ausblenden" aria-expanded="true" class="icon-btn pointer-events-auto px-2 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">▾</button>
             </div>
             <div id="header-stats" class="flex gap-5 text-center pointer-events-auto items-center">
                 <div id="header-numbers" class="flex gap-5">
@@ -106,9 +112,10 @@
                 </div>
                 <div id="header-buttons" class="flex flex-col gap-1 ml-2">
 					<div class="flex gap-2 items-center">
-						<button id="sound-btn" title="Sound an/aus" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🔊</button>
-						<button id="cycle-btn" title="Tageszeit stoppen/fortsetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">⏸️</button>
-						<button id="rezoom-btn" title="Kamera zurücksetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🎯</button>
+						<button id="sound-btn" title="Sound an/aus" aria-label="Sound ausschalten" aria-pressed="true" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🔊</button>
+						<span id="traffic-status" title="Stadtsound noch nicht gestartet" aria-label="Stadtsound noch nicht gestartet" class="text-xs text-slate-400" aria-live="polite">●</span>
+						<button id="cycle-btn" title="Tageszeit stoppen/fortsetzen" aria-label="Tageszeit anhalten" aria-pressed="false" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">⏸️</button>
+						<button id="rezoom-btn" title="Kamera zurücksetzen" aria-label="Kamera zurücksetzen" class="icon-btn px-3 py-1.5 rounded-lg border border-slate-500 text-lg leading-none">🎯</button>
 						<div id="daynight-indicator" class="text-lg" title="Tageszeit">🌞</div>
 					</div>
                     <div class="flex gap-1 justify-center">
@@ -126,34 +133,85 @@
     <div class="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pointer-events-none">
         <div class="max-w-4xl mx-auto pointer-events-auto">
             <div class="flex justify-center">
-                <button id="controls-toggle-btn" title="Steuerung ein-/ausblenden" class="icon-btn px-4 py-1 rounded-t-lg border border-b-0 border-slate-500 bg-slate-800/80 text-sm leading-none">▾ Steuerung</button>
+                <button id="controls-toggle-btn" title="Steuerung ein-/ausblenden" aria-label="Steuerung ein- oder ausblenden" aria-expanded="true" class="icon-btn px-4 py-1 rounded-t-lg border border-b-0 border-slate-500 bg-slate-800/80 text-sm leading-none">▾ Steuerung</button>
             </div>
-            <div id="controls-body" class="glass-panel rounded-2xl p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div id="controls-body" class="glass-panel rounded-2xl p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="flex flex-col gap-2 justify-center">
-                <label class="text-xs text-slate-300 font-bold uppercase tracking-wider">Anzahl der Scheiben</label>
+                <label for="disk-slider" class="text-xs text-slate-300 font-bold uppercase tracking-wider">Anzahl der Scheiben</label>
                 <div class="flex items-center gap-4">
                     <input type="range" id="disk-slider" min="3" max="8" value="3" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-amber-400">
                     <span id="disk-count-display" class="text-2xl font-display text-amber-300 w-8 text-center">3</span>
                 </div>
+                <label for="rule-select" class="text-xs text-slate-300 font-bold uppercase tracking-wider">Spielregel</label>
+                <select id="rule-select" class="rounded-lg border border-slate-500 bg-slate-800 px-2 py-1.5 text-sm text-slate-100">
+                    <option value="standard">Standard</option>
+                    <option value="adjacent">Nur Nachbartürme</option>
+                    <option value="clockwise">Nur im Uhrzeigersinn</option>
+                </select>
             </div>
-            <div class="flex justify-center items-center gap-3">
-                <button id="reset-btn" title="Neustart" class="px-4 py-3 rounded-xl font-bold text-slate-200 hover:text-white border border-slate-500 hover:border-slate-300 transition-all">
+            <div class="flex flex-wrap justify-center items-center gap-2">
+                <button id="reset-btn" title="Neustart" aria-label="Spiel neu starten" class="px-4 py-3 rounded-xl font-bold text-slate-200 hover:text-white border border-slate-500 hover:border-slate-300 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
                 </button>
-                <button id="demo-btn" class="btn-primary px-6 py-3 rounded-xl font-bold text-white flex items-center gap-2 whitespace-nowrap">
+                <button id="hint-btn" class="px-4 py-3 rounded-xl font-bold text-cyan-200 border border-cyan-500/70 hover:bg-cyan-500/20 transition-all whitespace-nowrap" title="Nächsten optimalen Zug zeigen">💡 Hinweis</button>
+                <button id="demo-btn" class="btn-primary px-4 py-3 rounded-xl font-bold text-white flex items-center gap-2 whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
                     </svg>
                     Auto-Lösung
                 </button>
             </div>
-            <div class="flex items-center justify-center md:justify-end">
+            <div class="flex flex-col justify-center gap-2">
+                <div class="flex justify-center gap-2">
+                    <button id="demo-pause-btn" disabled class="px-3 py-2 rounded-lg border border-slate-500 disabled:opacity-40" aria-label="Auto-Lösung pausieren">⏸ Pause</button>
+                    <button id="demo-step-btn" disabled class="px-3 py-2 rounded-lg border border-slate-500 disabled:opacity-40" aria-label="Einen Lösungsschritt ausführen">⏭ Schritt</button>
+                </div>
+                <label for="demo-speed" class="text-xs text-slate-300 text-center">Demo-Tempo</label>
+                <select id="demo-speed" class="rounded-lg border border-slate-500 bg-slate-800 px-2 py-1.5 text-sm text-slate-100">
+                    <option value="1">Normal</option>
+                    <option value="0.6">Schnell</option>
+                    <option value="0.3">Sehr schnell</option>
+                </select>
+            </div>
+            <div class="flex flex-col items-center justify-center md:items-end gap-2">
                 <div id="game-message" class="text-sm text-amber-200 font-medium text-center md:text-right">Klicke einen Turm, um eine Scheibe zu wählen</div>
+                <div id="best-score" class="text-xs text-green-300 text-center md:text-right" aria-live="polite">Bestwert: –</div>
+                <div class="text-[10px] text-slate-400 text-center md:text-right">Tasten: 1–3 Türme · H Hinweis · R Neustart · Leertaste Pause</div>
+                <div class="flex gap-2">
+                    <button id="mixer-open-btn" class="px-3 py-1.5 rounded-lg border border-slate-500 hover:border-amber-300 text-xs">🎚 Audio</button>
+                    <button id="scores-open-btn" class="px-3 py-1.5 rounded-lg border border-slate-500 hover:border-amber-300 text-xs">🏆 Bestenliste</button>
+                </div>
             </div>
             </div>
         </div>
+    </div>
+
+    <div id="panel-overlay" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3" role="presentation">
+        <section id="mixer-panel" class="settings-panel hidden glass-panel w-full max-w-md rounded-2xl p-5" role="dialog" aria-modal="true" aria-labelledby="mixer-title">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="mixer-title" class="font-display text-lg text-amber-300">🎚 Audio-Mixer</h2>
+                <button class="panel-close px-3 py-1 rounded-lg border border-slate-500" aria-label="Audio-Mixer schließen">✕</button>
+            </div>
+            <div class="space-y-4">
+                <label class="mixer-row"><span>Stadt</span><input id="volume-city" data-volume="city" type="range" min="0" max="100" value="100" class="accent-amber-400"><output id="volume-city-value">100%</output></label>
+                <label class="mixer-row"><span>Wetter</span><input id="volume-weather" data-volume="weather" type="range" min="0" max="100" value="100" class="accent-cyan-400"><output id="volume-weather-value">100%</output></label>
+                <label class="mixer-row"><span>Vögel</span><input id="volume-birds" data-volume="birds" type="range" min="0" max="100" value="100" class="accent-green-400"><output id="volume-birds-value">100%</output></label>
+                <label class="mixer-row"><span>Spiel</span><input id="volume-effects" data-volume="effects" type="range" min="0" max="100" value="100" class="accent-red-400"><output id="volume-effects-value">100%</output></label>
+            </div>
+        </section>
+
+        <section id="scores-panel" class="settings-panel hidden glass-panel w-full max-w-2xl rounded-2xl p-5" role="dialog" aria-modal="true" aria-labelledby="scores-title">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="scores-title" class="font-display text-lg text-amber-300">🏆 Bestenliste</h2>
+                <button class="panel-close px-3 py-1 rounded-lg border border-slate-500" aria-label="Bestenliste schließen">✕</button>
+            </div>
+            <div id="scores-list" class="overflow-x-auto text-sm"></div>
+            <div class="mt-4 flex justify-end">
+                <button id="scores-reset-btn" class="px-3 py-2 rounded-lg border border-red-500 text-red-200 hover:bg-red-500/20">Bestwerte zurücksetzen</button>
+            </div>
+        </section>
     </div>
 
     <script type="module">
@@ -179,6 +237,34 @@
         const BRIDGE_X0 = 20, BRIDGE_X1 = 56;      // Brücken-Spannweite (See x: 22..54)
         const BRIDGE_Y = 0.72;                      // Fahrbahnhöhe der Brücke
         const BRIDGE_RAMP = 5;                       // Länge der Auf-/Abfahrt (statt hartem Sprung)
+        const SETTINGS_KEY = 'hanoi3d-settings-v1';
+        const DEFAULT_SETTINGS = {
+            diskCount: 3,
+            ruleMode: 'standard',
+            demoSpeedFactor: 1,
+            soundOn: true,
+            volumes: { city: 1, weather: 1, birds: 1, effects: 1 }
+        };
+
+        function loadSettings() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+                return {
+                    ...DEFAULT_SETTINGS,
+                    ...stored,
+                    volumes: { ...DEFAULT_SETTINGS.volumes, ...(stored?.volumes || {}) }
+                };
+            } catch { return structuredClone(DEFAULT_SETTINGS); }
+        }
+
+        let settings = loadSettings();
+
+        function saveSettings() {
+            settings = { diskCount, ruleMode, demoSpeedFactor, soundOn, volumes: { ...volumes } };
+            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+            catch { /* Spiel bleibt auch ohne verfügbaren lokalen Speicher nutzbar. */ }
+        }
+
         function bridgeHeightAt(x) {
             if (x < BRIDGE_X0 || x > BRIDGE_X1) return 0;
             if (x < BRIDGE_X0 + BRIDGE_RAMP) return BRIDGE_Y * (x - BRIDGE_X0) / BRIDGE_RAMP;
@@ -189,31 +275,44 @@
         // ============ STATE ============
         let towers = [[], [], []];
         let diskMeshes = {};
-        let diskCount = 3;
+        let diskCount = Math.min(MAX_DISKS, Math.max(3, Number(settings.diskCount) || 3));
         let selectedTower = null;
         let selectedMesh = null;
         let moveCount = 0;
         let isAnimating = false;
         let isDemoRunning = false;
+        let isDemoPaused = false;
+        let demoStepRequested = false;
+        let demoRunId = 0;
+        let demoSpeedFactor = [1, 0.6, 0.3].includes(Number(settings.demoSpeedFactor)) ? Number(settings.demoSpeedFactor) : 1;
+        let ruleMode = ['standard', 'adjacent', 'clockwise'].includes(settings.ruleMode) ? settings.ruleMode : 'standard';
+        let gameWon = false;
         let timerInterval = null;
         let startTime = null;
         let synth = null;
         let confetti = [];
+        let confettiGeometry = null;
         let audioReady = false;
-        let soundOn = true;
+        let audioStarting = false;
+        let soundOn = settings.soundOn !== false;
+        let volumes = Object.fromEntries(Object.keys(DEFAULT_SETTINGS.volumes).map(key => [
+            key,
+            Math.min(1, Math.max(0, Number(settings.volumes?.[key] ?? 1)))
+        ]));
 
 		// Audio-Nodes
 		let humNoise, humGain, rainNoise, rainGain;
 		let thunderNoise, thunderGain, thunderCrackGain, thunderFilter;
 		let hornSynth, birdSynth;
 		let trafficPlayer, trafficGain;
+		let cityBus, weatherBus, birdBus, effectsBus;
 		
         // Tag/Nacht
         let winGlow = 0.1;
         let sunElev = 1;
         let cyclePaused = false;
         let frozenCt = 0.25;
-        let cycleOffset = 0;
+        let cycleOffset = -0.25 * DAY_LEN;
 
         // Regen: nur automatisch
         const rain = { factor: 0, target: 0, nextAuto: 20 + Math.random() * 25, autoEnd: 0 };
@@ -854,6 +953,26 @@
         goalRing.position.set(TOWER_X[2], 0.45, 0);
         gameGroup.add(goalRing);
 
+        // Hinweis-Markierungen für Quell- und Zielturm
+        const hintRings = TOWER_X.map((x, index) => {
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(2.55, 0.12, 12, 48),
+                new THREE.MeshBasicMaterial({
+                    color: index === 0 ? 0x22d3ee : 0x4ade80,
+                    transparent: true,
+                    opacity: 0,
+                    depthTest: false
+                })
+            );
+            ring.rotation.x = Math.PI / 2;
+            ring.position.set(x, 0.48, 0);
+            ring.visible = false;
+            ring.renderOrder = 10;
+            gameGroup.add(ring);
+            return ring;
+        });
+        let hintHighlightTimeout = null;
+
         // ============ ZUSCHAUER (stehend/neugierig oder sitzend/wartend) ============
         // Laufen/sitzen NUR entlang eines Rechtecks außerhalb der Spielfeld-Plattform
         // (Plattform: BoxGeometry(SPACING*2+4, 0.7, 4.5) => Halbbreite SPACING+2, Halbtiefe 2.25).
@@ -959,17 +1078,179 @@
         const minEl = document.getElementById('min-moves');
         const timerEl = document.getElementById('timer');
         const msgEl = document.getElementById('game-message');
+        const bestEl = document.getElementById('best-score');
+        const TOWER_NAMES = ['links', 'Mitte', 'rechts'];
 
-        function updateMinMoves() { minEl.textContent = Math.pow(2, diskCount) - 1; }
+        function isRuleMoveAllowed(from, to) {
+            if (ruleMode === 'adjacent') return Math.abs(from - to) === 1;
+            if (ruleMode === 'clockwise') return to === (from + 1) % 3;
+            return true;
+        }
+
+        function towersToPositions() {
+            const positions = new Array(diskCount);
+            towers.forEach((stack, tower) => stack.forEach(size => { positions[size] = tower; }));
+            return positions;
+        }
+
+        function shortestSolution(startPositions = towersToPositions()) {
+            const startKey = startPositions.join('');
+            const goalKey = '2'.repeat(diskCount);
+            if (startKey === goalKey) return [];
+
+            const queue = [startPositions.slice()];
+            const parents = new Map([[startKey, null]]);
+            let head = 0;
+
+            while (head < queue.length) {
+                const state = queue[head++];
+                const stateKey = state.join('');
+                const top = [null, null, null];
+                for (let disk = 0; disk < diskCount; disk++) {
+                    const tower = state[disk];
+                    if (top[tower] === null) top[tower] = disk;
+                }
+
+                for (let from = 0; from < 3; from++) {
+                    if (top[from] === null) continue;
+                    for (let to = 0; to < 3; to++) {
+                        if (from === to || !isRuleMoveAllowed(from, to)) continue;
+                        if (top[to] !== null && top[from] > top[to]) continue;
+                        const next = state.slice();
+                        next[top[from]] = to;
+                        const nextKey = next.join('');
+                        if (parents.has(nextKey)) continue;
+                        parents.set(nextKey, { previous: stateKey, move: [from, to] });
+                        if (nextKey === goalKey) {
+                            const moves = [];
+                            let key = nextKey;
+                            while (parents.get(key)) {
+                                const entry = parents.get(key);
+                                moves.push(entry.move);
+                                key = entry.previous;
+                            }
+                            return moves.reverse();
+                        }
+                        queue.push(next);
+                    }
+                }
+            }
+            return null;
+        }
+
+        function minimumMoves() {
+            const solution = shortestSolution(new Array(diskCount).fill(0));
+            return solution ? solution.length : '–';
+        }
+
+        function updateMinMoves() { minEl.textContent = minimumMoves(); }
         function setMessage(t) { msgEl.textContent = t; }
         function updateMoves() { moveEl.textContent = moveCount; }
+
+        function formatTime(seconds) {
+            return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+        }
+
+        function bestKey(mode = ruleMode, count = diskCount) { return `hanoi3d-best-${mode}-${count}`; }
+
+        function readBest(mode = ruleMode, count = diskCount) {
+            try { return JSON.parse(localStorage.getItem(bestKey(mode, count))) || null; }
+            catch { return null; }
+        }
+
+        function updateBestDisplay() {
+            const best = readBest();
+            bestEl.textContent = best
+                ? `Bestwert: ${best.moves} Züge · ${formatTime(best.seconds)}`
+                : 'Bestwert: –';
+        }
+
+        function saveBest(seconds) {
+            const previous = readBest();
+            const best = {
+                moves: previous ? Math.min(previous.moves, moveCount) : moveCount,
+                seconds: previous ? Math.min(previous.seconds, seconds) : seconds
+            };
+            try { localStorage.setItem(bestKey(), JSON.stringify(best)); }
+            catch { /* Spiel bleibt auch ohne verfügbaren lokalen Speicher nutzbar. */ }
+            updateBestDisplay();
+        }
+
+        const RULE_LABELS = {
+            standard: 'Standard',
+            adjacent: 'Nachbartürme',
+            clockwise: 'Uhrzeigersinn'
+        };
+
+        function renderLeaderboard() {
+            const container = document.getElementById('scores-list');
+            container.replaceChildren();
+            const table = document.createElement('table');
+            table.className = 'w-full border-collapse';
+            const head = document.createElement('thead');
+            const headRow = document.createElement('tr');
+            ['Regel', 'Scheiben', 'Züge', 'Zeit'].forEach(label => {
+                const th = document.createElement('th');
+                th.className = 'border-b border-slate-600 px-2 py-2 text-left text-slate-300';
+                th.textContent = label;
+                headRow.appendChild(th);
+            });
+            head.appendChild(headRow);
+            table.appendChild(head);
+            const body = document.createElement('tbody');
+            let entries = 0;
+            Object.keys(RULE_LABELS).forEach(mode => {
+                for (let count = 3; count <= MAX_DISKS; count++) {
+                    const best = readBest(mode, count);
+                    if (!best) continue;
+                    entries++;
+                    const row = document.createElement('tr');
+                    [RULE_LABELS[mode], count, best.moves, formatTime(best.seconds)].forEach(value => {
+                        const cell = document.createElement('td');
+                        cell.className = 'border-b border-slate-700 px-2 py-2';
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    });
+                    body.appendChild(row);
+                }
+            });
+            table.appendChild(body);
+            if (entries) container.appendChild(table);
+            else {
+                const empty = document.createElement('p');
+                empty.className = 'py-5 text-center text-slate-400';
+                empty.textContent = 'Noch keine Bestwerte gespeichert.';
+                container.appendChild(empty);
+            }
+        }
+
+        function resetHighscores() {
+            if (!confirm('Alle lokalen Bestwerte wirklich zurücksetzen?')) return;
+            Object.keys(RULE_LABELS).forEach(mode => {
+                for (let count = 3; count <= MAX_DISKS; count++) localStorage.removeItem(bestKey(mode, count));
+            });
+            updateBestDisplay();
+            renderLeaderboard();
+        }
+
+        function syncSettingsUI() {
+            document.getElementById('disk-slider').value = String(diskCount);
+            document.getElementById('disk-count-display').textContent = diskCount;
+            document.getElementById('rule-select').value = ruleMode;
+            document.getElementById('demo-speed').value = String(demoSpeedFactor);
+            Object.entries(volumes).forEach(([name, value]) => {
+                const percent = Math.round(value * 100);
+                document.getElementById(`volume-${name}`).value = String(percent);
+                document.getElementById(`volume-${name}-value`).textContent = `${percent}%`;
+            });
+        }
 
         function startTimer() {
             stopTimer();
             startTime = Date.now();
             timerInterval = setInterval(() => {
                 const s = Math.floor((Date.now() - startTime) / 1000);
-                timerEl.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+                timerEl.textContent = formatTime(s);
             }, 500);
         }
         function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
@@ -989,7 +1270,7 @@
             const dx = e.clientX - downPos[0], dy = e.clientY - downPos[1];
             downPos = null;
             if (dx*dx + dy*dy > 25) return;
-            if (isAnimating || isDemoRunning) return;
+            if (isAnimating || isDemoRunning || gameWon) return;
 
             pointer.x = (e.clientX / innerWidth) * 2 - 1;
             pointer.y = -(e.clientY / innerHeight) * 2 + 1;
@@ -1039,25 +1320,38 @@
             const mesh = diskMeshes[size];
             const targetStack = towers[to].length;
             const liftY = BASE_TOP + ROD_H + 1.2;
+            const speed = isDemoRunning ? demoSpeedFactor : 1;
 
             isAnimating = true;
             const tl = gsap.timeline();
-            tl.to(mesh.position, { y: liftY, duration: 0.35, ease: 'power2.out' })
-              .to(mesh.position, { x: TOWER_X[to], duration: 0.4, ease: 'power2.inOut' })
-              .to(mesh.position, { y: diskY(to, targetStack), duration: 0.35, ease: 'power2.in' });
+            tl.to(mesh.position, { y: liftY, duration: 0.35 * speed, ease: 'power2.out' })
+              .to(mesh.position, { x: TOWER_X[to], duration: 0.4 * speed, ease: 'power2.inOut' })
+              .to(mesh.position, { y: diskY(to, targetStack), duration: 0.35 * speed, ease: 'power2.in' });
             await tl;
             isAnimating = false;
         }
 
         async function attemptMove(from, to) {
+            const automatedMove = isDemoRunning;
+            clearHintHighlight();
             const moving = towers[from][towers[from].length - 1];
             const target = towers[to].length > 0 ? towers[to][towers[to].length - 1] : Infinity;
+
+            if (!isRuleMoveAllowed(from, to)) {
+                const ruleText = ruleMode === 'adjacent'
+                    ? 'In dieser Variante sind nur benachbarte Türme erlaubt.'
+                    : 'In dieser Variante sind nur Züge im Uhrzeigersinn erlaubt.';
+                setMessage('❌ ' + ruleText);
+                if (synth && soundOn) synth.triggerAttackRelease("A2", "16n");
+                clearSelection();
+                return false;
+            }
 
             if (moving > target) {
                 setMessage('❌ Ungültig: Größere Scheibe kann nicht auf kleinere liegen!');
                 if (synth && soundOn) synth.triggerAttackRelease("A2", "16n");
                 clearSelection();
-                return;
+                return false;
             }
 
             const mesh = diskMeshes[moving];
@@ -1073,36 +1367,116 @@
             playNote(moving);
             setMessage('Guter Zug! Weiter so.');
 
-            if (moveCount === 1 && !timerInterval) startTimer();
-            checkWin();
+            if (!automatedMove && moveCount === 1 && !timerInterval) startTimer();
+            checkWin(automatedMove);
+            return true;
         }
 
         // ============ AUTO-LÖSUNG ============
-        function hanoiMoves(n, from, to, aux, moves) {
-            if (n === 0) return;
-            hanoiMoves(n - 1, from, aux, to, moves);
-            moves.push([from, to]);
-            hanoiMoves(n - 1, aux, to, from, moves);
+        function updateDemoControls() {
+            const demoBtn = document.getElementById('demo-btn');
+            const pauseBtn = document.getElementById('demo-pause-btn');
+            const stepBtn = document.getElementById('demo-step-btn');
+            demoBtn.lastChild.textContent = isDemoRunning ? ' Demo stoppen' : ' Auto-Lösung';
+            pauseBtn.disabled = !isDemoRunning;
+            stepBtn.disabled = !isDemoRunning;
+            pauseBtn.textContent = isDemoPaused ? '▶ Weiter' : '⏸ Pause';
+            pauseBtn.setAttribute('aria-label', isDemoPaused ? 'Auto-Lösung fortsetzen' : 'Auto-Lösung pausieren');
+        }
+
+        function stopDemo() {
+            demoRunId++;
+            isDemoRunning = false;
+            isDemoPaused = false;
+            demoStepRequested = false;
+            updateDemoControls();
+            if (!gameWon) setMessage('Auto-Lösung gestoppt. Du kannst weiterspielen.');
+        }
+
+        async function waitForDemoAdvance(runId) {
+            while (isDemoRunning && runId === demoRunId && isDemoPaused && !demoStepRequested) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            if (demoStepRequested) demoStepRequested = false;
         }
 
         async function runDemo() {
-            if (isDemoRunning || isAnimating) return;
+            if (isDemoRunning) { stopDemo(); return; }
+            if (isAnimating) return;
             resetGame();
+            const runId = ++demoRunId;
             isDemoRunning = true;
+            isDemoPaused = false;
+            updateDemoControls();
             setMessage('🤖 Auto-Lösung läuft…');
-            const moves = [];
-            hanoiMoves(diskCount, 0, 2, 1, moves);
-            for (const [f, t] of moves) {
-                if (!isDemoRunning) break;
-                await attemptMove(f, t);
-                await new Promise(r => setTimeout(r, 120));
+            const moves = shortestSolution();
+            if (!moves) {
+                stopDemo();
+                setMessage('❌ Für diesen Zustand wurde keine Lösung gefunden.');
+                return;
             }
-            isDemoRunning = false;
+            for (const [f, t] of moves) {
+                await waitForDemoAdvance(runId);
+                if (!isDemoRunning || runId !== demoRunId) break;
+                await attemptMove(f, t);
+                if (!isDemoRunning || runId !== demoRunId) break;
+                await new Promise(resolve => setTimeout(resolve, 120 * demoSpeedFactor));
+            }
+            if (runId === demoRunId) {
+                isDemoRunning = false;
+                isDemoPaused = false;
+                updateDemoControls();
+            }
+        }
+
+        function clearHintHighlight() {
+            if (hintHighlightTimeout) clearTimeout(hintHighlightTimeout);
+            hintHighlightTimeout = null;
+            hintRings.forEach(ring => {
+                gsap.killTweensOf(ring.material);
+                ring.visible = false;
+                ring.material.opacity = 0;
+            });
+        }
+
+        function highlightHint(from, to) {
+            clearHintHighlight();
+            [[from, 0x22d3ee], [to, 0x4ade80]].forEach(([tower, color]) => {
+                const ring = hintRings[tower];
+                ring.material.color.setHex(color);
+                ring.material.opacity = 0.95;
+                ring.visible = true;
+                gsap.fromTo(ring.material, { opacity: 0.95 }, {
+                    opacity: 0.3,
+                    duration: 0.65,
+                    repeat: 5,
+                    yoyo: true,
+                    ease: 'sine.inOut'
+                });
+            });
+            hintHighlightTimeout = setTimeout(clearHintHighlight, 4200);
+        }
+
+        function showHint() {
+            if (isAnimating || isDemoRunning || gameWon) return;
+            const moves = shortestSolution();
+            if (!moves || moves.length === 0) {
+                setMessage(moves ? '🎯 Das Ziel ist bereits erreicht.' : '❌ Keine Lösung gefunden.');
+                return;
+            }
+            const [from, to] = moves[0];
+            highlightHint(from, to);
+            setMessage(`💡 Optimaler nächster Zug: ${TOWER_NAMES[from]} → ${TOWER_NAMES[to]} (${moves.length} Züge verbleiben)`);
         }
 
         // ============ RESET & GEWINN ============
         function resetGame() {
+            demoRunId++;
             isDemoRunning = false;
+            isDemoPaused = false;
+            demoStepRequested = false;
+            gameWon = false;
+            clearHintHighlight();
             clearSelection();
             buildDisks();
             moveCount = 0;
@@ -1111,17 +1485,33 @@
             stopTimer();
             timerEl.textContent = '00:00';
             startTime = null;
-            confetti.forEach(c => scene.remove(c.mesh));
+            confetti.forEach(c => {
+                scene.remove(c.mesh);
+                c.mesh.material.dispose();
+            });
             confetti = [];
+            if (confettiGeometry) {
+                confettiGeometry.dispose();
+                confettiGeometry = null;
+            }
+            updateDemoControls();
+            updateBestDisplay();
             setMessage('Klicke einen Turm, um eine Scheibe zu wählen');
         }
 
-        function checkWin() {
-            if (towers[2].length === diskCount) {
+        function checkWin(automatedMove = false) {
+            if (!gameWon && towers[2].length === diskCount) {
+                gameWon = true;
+                const elapsedSeconds = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
                 stopTimer();
-                const optimal = Math.pow(2, diskCount) - 1;
-                const perf = moveCount === optimal ? '🏆 PERFEKT! Optimale Lösung!' : `Geschafft in ${moveCount} Zügen (Minimum: ${optimal})`;
+                const optimal = minimumMoves();
+                const perf = automatedMove
+                    ? `Auto-Lösung abgeschlossen: ${moveCount} Züge.`
+                    : moveCount === optimal
+                        ? '🏆 PERFEKT! Optimale Lösung!'
+                        : `Geschafft in ${moveCount} Zügen (Minimum: ${optimal})`;
                 setMessage('🎉 ' + perf);
+                if (!automatedMove) saveBest(elapsedSeconds);
                 if (synth && soundOn) {
                     const now = Tone.now();
                     ["C4","E4","G4","C5","E5","G5"].forEach((n, i) => synth.triggerAttackRelease(n, "8n", now + i*0.12));
@@ -1131,13 +1521,13 @@
         }
 
         function spawnConfetti() {
-            const geo = new THREE.PlaneGeometry(0.18, 0.18);
+            confettiGeometry = new THREE.PlaneGeometry(0.18, 0.18);
             for (let i = 0; i < 150; i++) {
                 const mat = new THREE.MeshBasicMaterial({
                     color: COLORS[Math.floor(Math.random()*COLORS.length)],
                     side: THREE.DoubleSide
                 });
-                const m = new THREE.Mesh(geo, mat);
+                const m = new THREE.Mesh(confettiGeometry, mat);
                 m.position.set(TOWER_X[2] + (Math.random()-0.5)*2, 4 + Math.random()*4, (Math.random()-0.5)*2);
                 m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
                 scene.add(m);
@@ -1166,29 +1556,52 @@
                     confetti.splice(i, 1);
                 }
             }
+            if (confetti.length === 0 && confettiGeometry) {
+                confettiGeometry.dispose();
+                confettiGeometry = null;
+            }
         }
 
         // ============ AMBIENT-SOUND (startet erst nach "Spiel starten") ============
-        async function initAmbient() {
+        function initAudioBuses() {
+            cityBus = new Tone.Gain(0).toDestination();
+            weatherBus = new Tone.Gain(0).toDestination();
+            birdBus = new Tone.Gain(0).toDestination();
+            effectsBus = new Tone.Gain(0).toDestination();
+        }
+
+        function applyMixerState() {
+            const targets = [
+                [cityBus, volumes.city],
+                [weatherBus, volumes.weather],
+                [birdBus, volumes.birds],
+                [effectsBus, volumes.effects]
+            ];
+            targets.forEach(([bus, level]) => {
+                if (bus) bus.gain.rampTo(soundOn ? level : 0, 0.15);
+            });
+        }
+
+        function initAmbient() {
             // Stadtrauschen
             humNoise = new Tone.Noise("pink").start();
-            humGain = new Tone.Gain(0.015).toDestination();
+            humGain = new Tone.Gain(0.015).connect(cityBus);
             const humFilter = new Tone.Filter(400, "lowpass");
             humNoise.connect(humFilter); humFilter.connect(humGain);
 
             // Regen
             rainNoise = new Tone.Noise("white").start();
-            rainGain = new Tone.Gain(0).toDestination();
+            rainGain = new Tone.Gain(0).connect(weatherBus);
             const rainFilter = new Tone.Filter(2500, "highpass");
             rainNoise.connect(rainFilter); rainFilter.connect(rainGain);
 
             // Donner: tiefes Rumpeln + kurzer harter Krachen-Anteil aus derselben Rauschquelle
             thunderNoise = new Tone.Noise("brown").start();
-            thunderGain = new Tone.Gain(0).toDestination();
+            thunderGain = new Tone.Gain(0).connect(weatherBus);
             thunderFilter = new Tone.Filter(220, "lowpass");
             thunderNoise.connect(thunderFilter); thunderFilter.connect(thunderGain);
 
-            thunderCrackGain = new Tone.Gain(0).toDestination();
+            thunderCrackGain = new Tone.Gain(0).connect(weatherBus);
             const crackFilter = new Tone.Filter(900, "highpass");
             thunderNoise.connect(crackFilter); crackFilter.connect(thunderCrackGain);
 
@@ -1197,7 +1610,7 @@
                 oscillator: { type: "sawtooth" },
                 envelope: { attack: 0.01, decay: 0.06, sustain: 0, release: 0.03 },
                 volume: -22
-            }).toDestination();
+            }).connect(cityBus);
             (function scheduleHorn() {
                 setTimeout(() => {
                     if (soundOn && audioReady && mopeds.length > 0) {
@@ -1210,32 +1623,53 @@
                 }, 4000 + Math.random()*10000);
             })();
 
-            // ===== Echter Verkehrslärm (FLAC von GitHub, gestreamt) =====
-            trafficGain = new Tone.Gain(0.25).toDestination();
-            const trafficUrl = "https://raw.githubusercontent.com/Jkegithub/Tuerme-von-Hanoi-3D-animation/main/traffic-heavy-busy-street-india.flac";
-            try {
-                trafficPlayer = new Tone.Player({
-                    url: trafficUrl,
-                    loop: true,
-                    autostart: false,
-                    fadeIn: 2,
-                    fadeOut: 2
-                }).connect(trafficGain);
+            // ===== Echter Verkehrslärm (lokale Projektdatei, im Hintergrund geladen) =====
+            trafficGain = new Tone.Gain(0.25).connect(cityBus);
+            const trafficStatus = document.getElementById('traffic-status');
+            const trafficSources = [
+                "./traffic-heavy-busy-street-india.mp3",
+                "./traffic-heavy-busy-street-india.flac",
+                "https://raw.githubusercontent.com/Jkegithub/Tuerme-von-Hanoi-3D-animation/main/traffic-heavy-busy-street-india.flac"
+            ];
+            trafficStatus.className = 'text-xs text-amber-300';
+            trafficStatus.title = 'Stadtsound wird geladen';
+            trafficStatus.setAttribute('aria-label', trafficStatus.title);
 
-                await trafficPlayer.load(trafficUrl);
-                if (soundOn && audioReady) trafficPlayer.start();
-                console.log("✓ Traffic-Sound von GitHub geladen & spielt (loop)");
-            } catch (err) {
-                console.warn("⚠️ Traffic-Audio von GitHub konnte nicht geladen werden:", err);
+            (async function loadTraffic() {
+                for (const source of trafficSources) {
+                    const candidate = new Tone.Player({
+                        loop: true,
+                        autostart: false,
+                        fadeIn: 2,
+                        fadeOut: 2
+                    }).connect(trafficGain);
+                    try {
+                        await candidate.load(source);
+                        trafficPlayer = candidate;
+                        if (soundOn && audioReady) trafficPlayer.start();
+                        const isLocal = source.startsWith('./');
+                        const format = source.endsWith('.mp3') ? 'MP3' : 'FLAC';
+                        trafficStatus.className = 'text-xs text-green-400';
+                        trafficStatus.title = `Stadtsound aktiv (${isLocal ? `lokal ${format}` : 'Online-Fallback'})`;
+                        trafficStatus.setAttribute('aria-label', trafficStatus.title);
+                        return;
+                    } catch (err) {
+                        candidate.dispose();
+                        console.warn(`Traffic-Audio konnte nicht geladen werden: ${source}`, err);
+                    }
+                }
                 trafficPlayer = null;
-            }
+                trafficStatus.className = 'text-xs text-red-400';
+                trafficStatus.title = 'Stadtsound konnte nicht geladen werden';
+                trafficStatus.setAttribute('aria-label', trafficStatus.title);
+            })();
 
             // Vogelgezwitscher (nur tagsüber) – "chirp chirp" mit Tonhöhen-Gleiten statt Glockenton
             birdSynth = new Tone.Synth({
                 oscillator: { type: "triangle" },
                 envelope: { attack: 0.005, decay: 0.08, sustain: 0, release: 0.05 },
                 volume: -26
-            }).toDestination();
+            }).connect(birdBus);
             function birdChirp(base) {
                 if (!(soundOn && audioReady && sunElev > 0)) return;
                 const now = Tone.now();
@@ -1294,14 +1728,16 @@
 		function applySoundState() {
 			const btn = document.getElementById('sound-btn');
 			btn.textContent = soundOn ? '🔊' : '🔇';
+			btn.setAttribute('aria-pressed', String(soundOn));
+			btn.setAttribute('aria-label', soundOn ? 'Sound ausschalten' : 'Sound einschalten');
 			if (!audioReady) return;
-			if (synth) synth.volume.value = soundOn ? -10 : -Infinity;
-			if (humGain) humGain.gain.rampTo(soundOn ? 0.015 : 0, 0.3);
-			if (rainGain) rainGain.gain.rampTo(soundOn ? rain.factor * 0.12 : 0, 0.3);
-			if (hornSynth) hornSynth.volume.value = soundOn ? -22 : -Infinity;
-			if (birdSynth) birdSynth.volume.value = soundOn ? -26 : -Infinity;
-			// NEU: Traffic-Player
-			if (trafficGain) trafficGain.gain.rampTo(soundOn ? 0.25 : 0, 0.3);
+			if (synth) synth.volume.value = -10;
+			if (humGain) humGain.gain.rampTo(0.015, 0.3);
+			if (rainGain) rainGain.gain.rampTo(rain.factor * 0.12, 0.3);
+			if (hornSynth) hornSynth.volume.value = -22;
+			if (birdSynth) birdSynth.volume.value = -26;
+			if (trafficGain) trafficGain.gain.rampTo(0.25, 0.3);
+			applyMixerState();
 			if (trafficPlayer && trafficPlayer.loaded) {
 				if (soundOn && trafficPlayer.state !== "started") trafficPlayer.start();
 				if (!soundOn && trafficPlayer.state === "started") { /* läuft leise weiter, kein hartes Stop nötig */ }
@@ -1502,7 +1938,7 @@
             }
             // Regen-Sound
             if (rainGain && audioReady) {
-                rainGain.gain.rampTo(soundOn ? rain.factor * 0.12 : 0, 0.2);
+                rainGain.gain.rampTo(rain.factor * 0.12, 0.2);
             }
 
             // Blitz & Donner (nur bei kräftigem Schauer) – Entfernung bestimmt Verzögerung
@@ -1519,12 +1955,82 @@
         }
 
         // ============ BUTTONS ============
+        const panelOverlay = document.getElementById('panel-overlay');
+
+        function closePanels() {
+            panelOverlay.classList.add('hidden');
+            document.getElementById('mixer-panel').classList.add('hidden');
+            document.getElementById('scores-panel').classList.add('hidden');
+        }
+
+        function openPanel(panelId) {
+            closePanels();
+            panelOverlay.classList.remove('hidden');
+            const panel = document.getElementById(panelId);
+            panel.classList.remove('hidden');
+            panel.querySelector('button')?.focus();
+        }
+
         document.getElementById('reset-btn').addEventListener('click', () => { if (!isAnimating) resetGame(); });
         document.getElementById('demo-btn').addEventListener('click', runDemo);
+        document.getElementById('hint-btn').addEventListener('click', showHint);
+        document.getElementById('demo-pause-btn').addEventListener('click', () => {
+            if (!isDemoRunning) return;
+            isDemoPaused = !isDemoPaused;
+            demoStepRequested = false;
+            updateDemoControls();
+            setMessage(isDemoPaused ? '⏸ Auto-Lösung pausiert.' : '▶ Auto-Lösung läuft weiter…');
+        });
+        document.getElementById('demo-step-btn').addEventListener('click', () => {
+            if (!isDemoRunning) return;
+            isDemoPaused = true;
+            demoStepRequested = true;
+            updateDemoControls();
+            setMessage('⏭ Ein Lösungsschritt…');
+        });
+        document.getElementById('demo-speed').addEventListener('change', e => {
+            demoSpeedFactor = parseFloat(e.target.value);
+            saveSettings();
+        });
+        document.getElementById('rule-select').addEventListener('change', e => {
+            if (isAnimating || isDemoRunning) {
+                e.target.value = ruleMode;
+                return;
+            }
+            ruleMode = e.target.value;
+            saveSettings();
+            resetGame();
+            const descriptions = {
+                standard: 'Standardregel aktiv.',
+                adjacent: 'Variante aktiv: nur Züge zwischen benachbarten Türmen.',
+                clockwise: 'Variante aktiv: nur links → Mitte → rechts → links.'
+            };
+            setMessage(descriptions[ruleMode]);
+        });
         document.getElementById('sound-btn').addEventListener('click', () => {
             soundOn = !soundOn;
+            saveSettings();
             applySoundState();
         });
+
+        document.querySelectorAll('[data-volume]').forEach(slider => {
+            slider.addEventListener('input', e => {
+                const name = e.target.dataset.volume;
+                volumes[name] = Number(e.target.value) / 100;
+                document.getElementById(`volume-${name}-value`).textContent = `${e.target.value}%`;
+                applyMixerState();
+                saveSettings();
+            });
+        });
+
+        document.getElementById('mixer-open-btn').addEventListener('click', () => openPanel('mixer-panel'));
+        document.getElementById('scores-open-btn').addEventListener('click', () => {
+            renderLeaderboard();
+            openPanel('scores-panel');
+        });
+        document.querySelectorAll('.panel-close').forEach(button => button.addEventListener('click', closePanels));
+        panelOverlay.addEventListener('click', e => { if (e.target === panelOverlay) closePanels(); });
+        document.getElementById('scores-reset-btn').addEventListener('click', resetHighscores);
 
         // Tageszeit-Buttons
         document.querySelectorAll('.time-btn').forEach(btn => {
@@ -1533,7 +2039,10 @@
                 btn.classList.add('active');
                 frozenCt = parseFloat(btn.dataset.ct);
                 cyclePaused = true;
-                document.getElementById('cycle-btn').textContent = '▶️';
+                const cycleBtn = document.getElementById('cycle-btn');
+                cycleBtn.textContent = '▶️';
+                cycleBtn.setAttribute('aria-pressed', 'true');
+                cycleBtn.setAttribute('aria-label', 'Tageszeit fortsetzen');
             });
         });
 
@@ -1544,11 +2053,15 @@
                 cyclePaused = false;
                 cycleOffset = clock.elapsedTime - frozenCt * DAY_LEN;
                 e.target.textContent = '⏸️';
+                e.target.setAttribute('aria-pressed', 'false');
+                e.target.setAttribute('aria-label', 'Tageszeit anhalten');
             } else {
                 // Pausieren
                 cyclePaused = true;
                 frozenCt = ((clock.elapsedTime - cycleOffset) % DAY_LEN) / DAY_LEN;
                 e.target.textContent = '▶️';
+                e.target.setAttribute('aria-pressed', 'true');
+                e.target.setAttribute('aria-label', 'Tageszeit fortsetzen');
             }
         });
 
@@ -1563,32 +2076,83 @@
             const el = document.getElementById('header-stats');
             el.classList.toggle('hidden');
             e.target.textContent = el.classList.contains('hidden') ? '▸' : '▾';
+            e.target.setAttribute('aria-expanded', String(!el.classList.contains('hidden')));
         });
         document.getElementById('controls-toggle-btn').addEventListener('click', (e) => {
             const el = document.getElementById('controls-body');
             el.classList.toggle('hidden');
             e.target.textContent = el.classList.contains('hidden') ? '▸ Steuerung' : '▾ Steuerung';
+            e.target.setAttribute('aria-expanded', String(!el.classList.contains('hidden')));
         });
 
         document.getElementById('disk-slider').addEventListener('input', e => {
-            diskCount = parseInt(e.target.value);
+            if (isAnimating || isDemoRunning) {
+                e.target.value = String(diskCount);
+                return;
+            }
+            diskCount = parseInt(e.target.value, 10);
             document.getElementById('disk-count-display').textContent = diskCount;
-            if (!isAnimating && !isDemoRunning) resetGame();
+            saveSettings();
+            resetGame();
+        });
+
+        addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !panelOverlay.classList.contains('hidden')) {
+                closePanels();
+                return;
+            }
+            if (['INPUT', 'SELECT', 'BUTTON'].includes(document.activeElement?.tagName)) return;
+            if (e.key >= '1' && e.key <= '3') {
+                if (!isAnimating && !isDemoRunning && !gameWon) handleTowerClick(Number(e.key) - 1);
+            } else if (e.key.toLowerCase() === 'h') {
+                showHint();
+            } else if (e.key.toLowerCase() === 'r') {
+                if (!isAnimating) resetGame();
+            } else if (e.key === 'Escape') {
+                clearSelection();
+                setMessage('Auswahl aufgehoben.');
+            } else if (e.code === 'Space' && isDemoRunning) {
+                e.preventDefault();
+                isDemoPaused = !isDemoPaused;
+                demoStepRequested = false;
+                updateDemoControls();
+                setMessage(isDemoPaused ? '⏸ Auto-Lösung pausiert.' : '▶ Auto-Lösung läuft weiter…');
+            }
         });
 
         document.getElementById('start-btn').addEventListener('click', async () => {
-            await Tone.start();
-            synth = new Tone.PolySynth(Tone.Synth).toDestination();
-            synth.volume.value = -10;
-            audioReady = true;
-            await initAmbient();
-            applySoundState();
-            document.getElementById('audio-overlay').classList.add('opacity-0','pointer-events-none');
+            if (audioStarting || audioReady) return;
+            const startBtn = document.getElementById('start-btn');
+            audioStarting = true;
+            startBtn.disabled = true;
+            startBtn.textContent = 'STARTET…';
+            try {
+                await Tone.start();
+                initAudioBuses();
+                synth = new Tone.PolySynth(Tone.Synth).connect(effectsBus);
+                synth.volume.value = -10;
+                audioReady = true;
+                initAmbient();
+                applySoundState();
+                document.getElementById('audio-overlay').classList.add('opacity-0','pointer-events-none');
+            } catch (err) {
+                console.error('Audio konnte nicht initialisiert werden:', err);
+                audioReady = false;
+                setMessage('⚠️ Audio konnte nicht gestartet werden. Bitte erneut versuchen.');
+                startBtn.disabled = false;
+                startBtn.textContent = 'ERNEUT VERSUCHEN';
+            } finally {
+                audioStarting = false;
+            }
         });
 
         // ============ RENDER LOOP ============
+        syncSettingsUI();
+        applySoundState();
         buildDisks();
         updateMinMoves();
+        updateBestDisplay();
+        updateDemoControls();
         const clock = new THREE.Clock();
 
         function animate() {
