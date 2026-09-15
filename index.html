@@ -41,6 +41,13 @@
         .time-btn { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
         .time-btn.active { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
         #controls-body { max-height: min(68vh, 620px); overflow-y:auto; }
+        .controls-layout { display:grid; grid-template-columns:minmax(0,1fr); }
+        @media (min-width: 768px) {
+            .controls-layout { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        }
+        @media (min-width: 1200px) {
+            .controls-layout { grid-template-columns:minmax(210px,1.15fr) minmax(230px,1fr) minmax(210px,.9fr) minmax(270px,1.25fr); }
+        }
         .settings-panel { max-height: min(80vh, 680px); overflow-y:auto; }
         .mixer-row { display:grid; grid-template-columns:5.5rem 1fr 3rem; align-items:center; gap:.65rem; }
 
@@ -49,6 +56,11 @@
            (text-lg, px-3 …) per JS zur Laufzeit injiziert und je nach
            Ladereihenfolge im <head> gegen unsere Regel gewinnen würde. */
         @media (max-width: 640px) {
+            #audio-overlay .text-center { width:100%; min-width:0; max-width:100%; overflow:hidden; }
+            #audio-overlay h1 { font-size:1.65rem !important; line-height:1.2 !important; letter-spacing:.04em !important; }
+            #audio-overlay h1 span { display:block; margin-top:.2rem; }
+            #audio-overlay p { max-width:21rem; margin-left:auto; margin-right:auto; font-size:.8rem !important; overflow-wrap:anywhere; }
+            header h1 { font-size:1rem !important; letter-spacing:0 !important; }
             .icon-btn { font-size: 1.5rem !important; padding: 0.55rem 0.75rem !important; }
             .time-btn { font-size: 1.2rem !important; padding: 0.5rem 0.65rem !important; }
             #daynight-indicator { font-size: 1.5rem !important; }
@@ -131,11 +143,11 @@
 
     <!-- Controls -->
     <div class="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pointer-events-none">
-        <div class="max-w-4xl mx-auto pointer-events-auto">
+        <div class="max-w-7xl mx-auto pointer-events-auto">
             <div class="flex justify-center">
                 <button id="controls-toggle-btn" title="Steuerung ein-/ausblenden" aria-label="Steuerung ein- oder ausblenden" aria-expanded="true" class="icon-btn px-4 py-1 rounded-t-lg border border-b-0 border-slate-500 bg-slate-800/80 text-sm leading-none">▾ Steuerung</button>
             </div>
-            <div id="controls-body" class="glass-panel rounded-2xl p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div id="controls-body" class="controls-layout glass-panel rounded-2xl p-5 gap-5">
             <div class="flex flex-col gap-2 justify-center">
                 <label for="disk-slider" class="text-xs text-slate-300 font-bold uppercase tracking-wider">Anzahl der Scheiben</label>
                 <div class="flex items-center gap-4">
@@ -147,6 +159,8 @@
                     <option value="standard">Standard</option>
                     <option value="adjacent">Nur Nachbartürme</option>
                     <option value="clockwise">Nur im Uhrzeigersinn</option>
+                    <option value="four">Vier Türme (Reve’s Puzzle)</option>
+                    <option value="fourAdjacent">Vier Türme – nur Nachbartürme</option>
                 </select>
             </div>
             <div class="flex flex-wrap justify-center items-center gap-2">
@@ -178,8 +192,10 @@
             <div class="flex flex-col items-center justify-center md:items-end gap-2">
                 <div id="game-message" class="text-sm text-amber-200 font-medium text-center md:text-right">Klicke einen Turm, um eine Scheibe zu wählen</div>
                 <div id="best-score" class="text-xs text-green-300 text-center md:text-right" aria-live="polite">Bestwert: –</div>
-                <div class="text-[10px] text-slate-400 text-center md:text-right">Tasten: 1–3 Türme · H Hinweis · R Neustart · Leertaste Pause</div>
-                <div class="flex gap-2">
+                <div class="text-[10px] text-slate-400 text-center md:text-right">Tasten: 1–4 Türme · H Hinweis · R Neustart · Leertaste Pause</div>
+                <div class="flex flex-wrap justify-center md:justify-end gap-2">
+                    <button id="learn-open-btn" class="px-3 py-1.5 rounded-lg border border-cyan-500 hover:border-cyan-300 text-xs">🎓 Lernmodus</button>
+                    <button id="challenge-open-btn" class="px-3 py-1.5 rounded-lg border border-purple-500 hover:border-purple-300 text-xs">⚔ Herausforderung</button>
                     <button id="mixer-open-btn" class="px-3 py-1.5 rounded-lg border border-slate-500 hover:border-amber-300 text-xs">🎚 Audio</button>
                     <button id="scores-open-btn" class="px-3 py-1.5 rounded-lg border border-slate-500 hover:border-amber-300 text-xs">🏆 Bestenliste</button>
                 </div>
@@ -212,6 +228,28 @@
                 <button id="scores-reset-btn" class="px-3 py-2 rounded-lg border border-red-500 text-red-200 hover:bg-red-500/20">Bestwerte zurücksetzen</button>
             </div>
         </section>
+
+        <section id="learn-panel" class="settings-panel hidden glass-panel w-full max-w-xl rounded-2xl p-5" role="dialog" aria-modal="true" aria-labelledby="learn-title">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="learn-title" class="font-display text-lg text-cyan-300">🎓 Lernmodus</h2>
+                <button class="panel-close px-3 py-1 rounded-lg border border-slate-500" aria-label="Lernmodus schließen">✕</button>
+            </div>
+            <div id="learn-content" class="text-sm leading-relaxed text-slate-200 min-h-28" aria-live="polite"></div>
+            <div class="mt-4 flex justify-between gap-2">
+                <button id="learn-prev-btn" class="px-3 py-2 rounded-lg border border-slate-500">← Zurück</button>
+                <button id="learn-action-btn" class="px-3 py-2 rounded-lg border border-cyan-500 text-cyan-200">Zug zeigen</button>
+                <button id="learn-next-btn" class="px-3 py-2 rounded-lg border border-slate-500">Weiter →</button>
+            </div>
+        </section>
+
+        <section id="challenge-panel" class="settings-panel hidden glass-panel w-full max-w-xl rounded-2xl p-5" role="dialog" aria-modal="true" aria-labelledby="challenge-title">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="challenge-title" class="font-display text-lg text-purple-300">⚔ Herausforderungen</h2>
+                <button class="panel-close px-3 py-1 rounded-lg border border-slate-500" aria-label="Herausforderungen schließen">✕</button>
+            </div>
+            <div id="challenge-list" class="space-y-3"></div>
+            <div id="challenge-status" class="mt-4 text-sm text-purple-200" aria-live="polite"></div>
+        </section>
     </div>
 
     <script type="module">
@@ -224,7 +262,8 @@
         const ROD_H = MAX_DISKS * DISK_H + 1.4;
         const BASE_TOP = 0.35;
         const SPACING = 7.5;
-        const TOWER_X = [-SPACING, 0, SPACING];
+        const TOWER_X_3 = [-SPACING, 0, SPACING];
+        const TOWER_X_4 = [-9, -3, 3, 9];
         const RADIUS_STEP = 0.35;
         const RADIUS_BASE = 0.5;
         const COLORS = [0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x06b6d4, 0x3b82f6, 0x8b5cf6, 0xd946ef];
@@ -273,7 +312,7 @@
         }
 
         // ============ STATE ============
-        let towers = [[], [], []];
+        let towers = [];
         let diskMeshes = {};
         let diskCount = Math.min(MAX_DISKS, Math.max(3, Number(settings.diskCount) || 3));
         let selectedTower = null;
@@ -285,7 +324,10 @@
         let demoStepRequested = false;
         let demoRunId = 0;
         let demoSpeedFactor = [1, 0.6, 0.3].includes(Number(settings.demoSpeedFactor)) ? Number(settings.demoSpeedFactor) : 1;
-        let ruleMode = ['standard', 'adjacent', 'clockwise'].includes(settings.ruleMode) ? settings.ruleMode : 'standard';
+        let ruleMode = ['standard', 'adjacent', 'clockwise', 'four', 'fourAdjacent'].includes(settings.ruleMode) ? settings.ruleMode : 'standard';
+        let learnStep = 0;
+        let activeChallenge = null;
+        let challengeFailed = false;
         let gameWon = false;
         let timerInterval = null;
         let startTime = null;
@@ -813,7 +855,7 @@
             g.position.set(xCenter, topY, z);
             scene.add(g);
         }
-        TOWER_X.forEach(tx => buildLanternString(tx, 3.6));
+        TOWER_X_4.forEach(tx => buildLanternString(tx, 3.6));
 
         // Lampion-Spotlights
         const SPOT_MAX = 450;
@@ -821,7 +863,7 @@
         const lightPools = [];
         const stringGlows = [];
 
-        TOWER_X.forEach(tx => {
+        TOWER_X_4.forEach(tx => {
             const spot = new THREE.SpotLight(0xffd9a0, 0, 30, Math.PI / 5.5, 0.7, 1.2);
             spot.position.set(tx, 9.6, 3.6);
             const tgt = new THREE.Object3D();
@@ -916,8 +958,13 @@
         const gameGroup = new THREE.Group();
         scene.add(gameGroup);
 
+        function towerCountForMode(mode = ruleMode) { return mode.startsWith('four') ? 4 : 3; }
+        function activeTowerXs() { return towerCountForMode() === 4 ? TOWER_X_4 : TOWER_X_3; }
+        function towerX(index) { return activeTowerXs()[index]; }
+        function goalTower() { return towerCountForMode() - 1; }
+
         // Plattform
-        const platform = new THREE.Mesh(new THREE.BoxGeometry(SPACING*2 + 4, 0.7, 4.5),
+        const platform = new THREE.Mesh(new THREE.BoxGeometry(22, 0.7, 4.5),
             new THREE.MeshStandardMaterial({ color: 0x8a5a2a, roughness: 0.7 }));
         platform.position.y = 0;
         platform.receiveShadow = true; platform.castShadow = true;
@@ -925,22 +972,24 @@
 
         // Stäbe
         const rodMat = new THREE.MeshStandardMaterial({ color: 0xc9a15a, metalness: 0.8, roughness: 0.3 });
-        for (let i = 0; i < 3; i++) {
+        const rods = [];
+        for (let i = 0; i < 4; i++) {
             const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, ROD_H, 16), rodMat);
-            rod.position.set(TOWER_X[i], BASE_TOP + ROD_H/2, 0);
+            rod.position.set(TOWER_X_4[i], BASE_TOP + ROD_H/2, 0);
             rod.castShadow = true;
             gameGroup.add(rod);
             const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), rodMat);
-            cap.position.set(TOWER_X[i], BASE_TOP + ROD_H + 0.1, 0);
+            cap.position.set(TOWER_X_4[i], BASE_TOP + ROD_H + 0.1, 0);
             gameGroup.add(cap);
+            rods.push({ rod, cap });
         }
 
         // Unsichtbare Klick-Zonen
         const clickZones = [];
         const zoneMat = new THREE.MeshBasicMaterial({ visible: false });
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 4; i++) {
             const zone = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, ROD_H + 3, 8), zoneMat);
-            zone.position.set(TOWER_X[i], (ROD_H + 3)/2, 0);
+            zone.position.set(TOWER_X_4[i], (ROD_H + 3)/2, 0);
             zone.userData.tower = i;
             gameGroup.add(zone);
             clickZones.push(zone);
@@ -950,11 +999,11 @@
         const goalRing = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.07, 10, 40),
             new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent:true, opacity:0.7 }));
         goalRing.rotation.x = Math.PI/2;
-        goalRing.position.set(TOWER_X[2], 0.45, 0);
+        goalRing.position.set(TOWER_X_3[2], 0.45, 0);
         gameGroup.add(goalRing);
 
         // Hinweis-Markierungen für Quell- und Zielturm
-        const hintRings = TOWER_X.map((x, index) => {
+        const hintRings = TOWER_X_4.map((x, index) => {
             const ring = new THREE.Mesh(
                 new THREE.TorusGeometry(2.55, 0.12, 12, 48),
                 new THREE.MeshBasicMaterial({
@@ -972,6 +1021,24 @@
             return ring;
         });
         let hintHighlightTimeout = null;
+
+        function updateTowerLayout() {
+            const xs = activeTowerXs();
+            rods.forEach(({ rod, cap }, index) => {
+                const active = index < xs.length;
+                rod.visible = cap.visible = active;
+                if (active) rod.position.x = cap.position.x = xs[index];
+            });
+            clickZones.forEach((zone, index) => {
+                zone.visible = index < xs.length;
+                if (index < xs.length) zone.position.x = xs[index];
+            });
+            hintRings.forEach((ring, index) => {
+                if (index < xs.length) ring.position.x = xs[index];
+                else ring.visible = false;
+            });
+            goalRing.position.x = xs[xs.length - 1];
+        }
 
         // ============ ZUSCHAUER (stehend/neugierig oder sitzend/wartend) ============
         // Laufen/sitzen NUR entlang eines Rechtecks außerhalb der Spielfeld-Plattform
@@ -1062,10 +1129,11 @@
         function buildDisks() {
             Object.values(diskMeshes).forEach(m => { gameGroup.remove(m); m.geometry.dispose(); m.material.dispose(); });
             diskMeshes = {};
-            towers = [[], [], []];
+            towers = Array.from({ length: towerCountForMode() }, () => []);
+            updateTowerLayout();
             for (let s = diskCount - 1; s >= 0; s--) {
                 const mesh = createDiskMesh(s);
-                mesh.position.set(TOWER_X[0], diskY(0, towers[0].length), 0);
+                mesh.position.set(towerX(0), diskY(0, towers[0].length), 0);
                 mesh.userData.tower = 0;
                 gameGroup.add(mesh);
                 diskMeshes[s] = mesh;
@@ -1079,10 +1147,10 @@
         const timerEl = document.getElementById('timer');
         const msgEl = document.getElementById('game-message');
         const bestEl = document.getElementById('best-score');
-        const TOWER_NAMES = ['links', 'Mitte', 'rechts'];
+        const TOWER_NAMES = ['Turm 1', 'Turm 2', 'Turm 3', 'Turm 4'];
 
         function isRuleMoveAllowed(from, to) {
-            if (ruleMode === 'adjacent') return Math.abs(from - to) === 1;
+            if (ruleMode === 'adjacent' || ruleMode === 'fourAdjacent') return Math.abs(from - to) === 1;
             if (ruleMode === 'clockwise') return to === (from + 1) % 3;
             return true;
         }
@@ -1095,7 +1163,8 @@
 
         function shortestSolution(startPositions = towersToPositions()) {
             const startKey = startPositions.join('');
-            const goalKey = '2'.repeat(diskCount);
+            const count = towerCountForMode();
+            const goalKey = String(count - 1).repeat(diskCount);
             if (startKey === goalKey) return [];
 
             const queue = [startPositions.slice()];
@@ -1105,15 +1174,15 @@
             while (head < queue.length) {
                 const state = queue[head++];
                 const stateKey = state.join('');
-                const top = [null, null, null];
+                const top = new Array(count).fill(null);
                 for (let disk = 0; disk < diskCount; disk++) {
                     const tower = state[disk];
                     if (top[tower] === null) top[tower] = disk;
                 }
 
-                for (let from = 0; from < 3; from++) {
+                for (let from = 0; from < count; from++) {
                     if (top[from] === null) continue;
-                    for (let to = 0; to < 3; to++) {
+                    for (let to = 0; to < count; to++) {
                         if (from === to || !isRuleMoveAllowed(from, to)) continue;
                         if (top[to] !== null && top[from] > top[to]) continue;
                         const next = state.slice();
@@ -1179,7 +1248,9 @@
         const RULE_LABELS = {
             standard: 'Standard',
             adjacent: 'Nachbartürme',
-            clockwise: 'Uhrzeigersinn'
+            clockwise: 'Uhrzeigersinn',
+            four: 'Vier Türme',
+            fourAdjacent: 'Vier Türme · Nachbarn'
         };
 
         function renderLeaderboard() {
@@ -1251,6 +1322,11 @@
             timerInterval = setInterval(() => {
                 const s = Math.floor((Date.now() - startTime) / 1000);
                 timerEl.textContent = formatTime(s);
+                if (activeChallenge?.timeLimit && s > activeChallenge.timeLimit && !challengeFailed) {
+                    challengeFailed = true;
+                    setMessage('⏱ Zeitlimit überschritten – du kannst die Runde trotzdem beenden.');
+                    updateChallengeStatus();
+                }
             }, 500);
         }
         function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
@@ -1325,7 +1401,7 @@
             isAnimating = true;
             const tl = gsap.timeline();
             tl.to(mesh.position, { y: liftY, duration: 0.35 * speed, ease: 'power2.out' })
-              .to(mesh.position, { x: TOWER_X[to], duration: 0.4 * speed, ease: 'power2.inOut' })
+              .to(mesh.position, { x: towerX(to), duration: 0.4 * speed, ease: 'power2.inOut' })
               .to(mesh.position, { y: diskY(to, targetStack), duration: 0.35 * speed, ease: 'power2.in' });
             await tl;
             isAnimating = false;
@@ -1338,7 +1414,7 @@
             const target = towers[to].length > 0 ? towers[to][towers[to].length - 1] : Infinity;
 
             if (!isRuleMoveAllowed(from, to)) {
-                const ruleText = ruleMode === 'adjacent'
+                const ruleText = ruleMode === 'adjacent' || ruleMode === 'fourAdjacent'
                     ? 'In dieser Variante sind nur benachbarte Türme erlaubt.'
                     : 'In dieser Variante sind nur Züge im Uhrzeigersinn erlaubt.';
                 setMessage('❌ ' + ruleText);
@@ -1364,8 +1440,13 @@
             mesh.userData.tower = to;
             moveCount++;
             updateMoves();
+            if (activeChallenge?.moveLimit && moveCount > activeChallenge.moveLimit && !challengeFailed) {
+                challengeFailed = true;
+                setMessage('⚔ Zuglimit überschritten – du kannst die Runde trotzdem beenden.');
+                updateChallengeStatus();
+            }
             playNote(moving);
-            setMessage('Guter Zug! Weiter so.');
+            if (!challengeFailed) setMessage('Guter Zug! Weiter so.');
 
             if (!automatedMove && moveCount === 1 && !timerInterval) startTimer();
             checkWin(automatedMove);
@@ -1476,6 +1557,7 @@
             isDemoPaused = false;
             demoStepRequested = false;
             gameWon = false;
+            challengeFailed = false;
             clearHintHighlight();
             clearSelection();
             buildDisks();
@@ -1496,11 +1578,12 @@
             }
             updateDemoControls();
             updateBestDisplay();
-            setMessage('Klicke einen Turm, um eine Scheibe zu wählen');
+            setMessage(activeChallenge ? `⚔ ${activeChallenge.title}: Herausforderung läuft.` : 'Klicke einen Turm, um eine Scheibe zu wählen');
+            updateChallengeStatus();
         }
 
         function checkWin(automatedMove = false) {
-            if (!gameWon && towers[2].length === diskCount) {
+            if (!gameWon && towers[goalTower()].length === diskCount) {
                 gameWon = true;
                 const elapsedSeconds = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
                 stopTimer();
@@ -1512,6 +1595,18 @@
                         : `Geschafft in ${moveCount} Zügen (Minimum: ${optimal})`;
                 setMessage('🎉 ' + perf);
                 if (!automatedMove) saveBest(elapsedSeconds);
+                if (!automatedMove && activeChallenge) {
+                    const success = !challengeFailed
+                        && (!activeChallenge.moveLimit || moveCount <= activeChallenge.moveLimit)
+                        && (!activeChallenge.timeLimit || elapsedSeconds <= activeChallenge.timeLimit);
+                    if (success) {
+                        try { localStorage.setItem(`hanoi3d-challenge-${activeChallenge.id}`, 'complete'); } catch {}
+                        setMessage(`🏅 Herausforderung „${activeChallenge.title}“ geschafft!`);
+                    } else {
+                        setMessage(`🎉 Puzzle gelöst; Herausforderung „${activeChallenge.title}“ nicht erfüllt.`);
+                    }
+                    updateChallengeStatus();
+                }
                 if (synth && soundOn) {
                     const now = Tone.now();
                     ["C4","E4","G4","C5","E5","G5"].forEach((n, i) => synth.triggerAttackRelease(n, "8n", now + i*0.12));
@@ -1528,7 +1623,7 @@
                     side: THREE.DoubleSide
                 });
                 const m = new THREE.Mesh(confettiGeometry, mat);
-                m.position.set(TOWER_X[2] + (Math.random()-0.5)*2, 4 + Math.random()*4, (Math.random()-0.5)*2);
+                m.position.set(towerX(goalTower()) + (Math.random()-0.5)*2, 4 + Math.random()*4, (Math.random()-0.5)*2);
                 m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
                 scene.add(m);
                 confetti.push({
@@ -1956,10 +2051,93 @@
         // ============ BUTTONS ============
         const panelOverlay = document.getElementById('panel-overlay');
 
+        const LEARN_STEPS = [
+            { title: '1 · Ziel und Aufbau', text: 'Bringe den gesamten Scheibenstapel vom ersten zum grün markierten Zielturm. Du bewegst immer nur die oberste Scheibe eines Turms.', action: 'Lernspiel starten' },
+            { title: '2 · Die wichtigste Regel', text: 'Eine größere Scheibe darf niemals auf einer kleineren liegen. Probiere einen solchen Zug aus: Das Spiel lehnt ihn ab und erklärt den Grund.', action: 'Neu starten' },
+            { title: '3 · Strategisch denken', text: 'Um die größte Scheibe zu bewegen, müssen zunächst alle kleineren Scheiben aus dem Weg. Der Hinweis markiert den optimalen Quell- und Zielturm.', action: 'Optimalen Zug zeigen' },
+            { title: '4 · Varianten und Algorithmus', text: 'Bei drei Türmen zerlegt die rekursive Lösung das Problem in kleinere Stapel. Der Vier-Turm-Modus nutzt einen zusätzlichen Zwischenplatz; das Spiel berechnet per Zustands-Suche einen kürzesten Weg.', action: 'Auto-Lösung ansehen' }
+        ];
+
+        function renderLearnStep() {
+            const step = LEARN_STEPS[learnStep];
+            document.getElementById('learn-content').innerHTML = `<h3 class="font-bold text-cyan-200 mb-2">${step.title}</h3><p>${step.text}</p><p class="mt-3 text-xs text-slate-400">Schritt ${learnStep + 1} von ${LEARN_STEPS.length}</p>`;
+            document.getElementById('learn-prev-btn').disabled = learnStep === 0;
+            document.getElementById('learn-next-btn').disabled = learnStep === LEARN_STEPS.length - 1;
+            document.getElementById('learn-action-btn').textContent = step.action;
+        }
+
+        function runLearnAction() {
+            closePanels();
+            if (learnStep <= 1) {
+                activeChallenge = null;
+                ruleMode = 'standard';
+                diskCount = 3;
+                saveSettings();
+                syncSettingsUI();
+                resetGame();
+                setMessage(learnStep === 0 ? '🎓 Wähle Turm 1 und danach Turm 3.' : '🎓 Teste bewusst, eine größere Scheibe auf eine kleinere zu legen.');
+            } else if (learnStep === 2) showHint();
+            else runDemo();
+        }
+
+        const CHALLENGES = [
+            { id: 'perfect-3', title: 'Perfekter Einstieg', description: '3 Scheiben ohne Extrazug', disks: 3, mode: 'standard', moveLimit: 7 },
+            { id: 'speed-4', title: 'Hanoi-Sprint', description: '4 Scheiben in höchstens 45 Sekunden und 15 Zügen', disks: 4, mode: 'standard', moveLimit: 15, timeLimit: 45 },
+            { id: 'reve-5', title: 'Reve-Meister', description: '5 Scheiben auf vier Türmen mit höchstens 13 Zügen', disks: 5, mode: 'four', moveLimit: 13 },
+            { id: 'reve-hard-5', title: 'Reve – Engpass', description: '5 Scheiben, vier Türme, nur benachbarte Züge, höchstens 57 Züge', disks: 5, mode: 'fourAdjacent', moveLimit: 57 }
+        ];
+
+        function challengeComplete(id) {
+            try { return localStorage.getItem(`hanoi3d-challenge-${id}`) === 'complete'; } catch { return false; }
+        }
+
+        function updateChallengeStatus() {
+            const status = document.getElementById('challenge-status');
+            if (!status) return;
+            status.textContent = activeChallenge ? `Aktiv: ${activeChallenge.title}${challengeFailed ? ' · Limit überschritten' : ''}` : 'Keine Herausforderung aktiv.';
+        }
+
+        function renderChallenges() {
+            const list = document.getElementById('challenge-list');
+            list.replaceChildren();
+            CHALLENGES.forEach(challenge => {
+                const row = document.createElement('div');
+                row.className = 'rounded-xl border border-slate-600 p-3 flex items-center justify-between gap-3';
+                const description = document.createElement('div');
+                const title = document.createElement('div');
+                title.className = 'font-bold text-purple-200';
+                title.textContent = `${challengeComplete(challenge.id) ? '🏅 ' : ''}${challenge.title}`;
+                const detail = document.createElement('div');
+                detail.className = 'text-xs text-slate-300';
+                detail.textContent = challenge.description;
+                description.append(title, detail);
+                const button = document.createElement('button');
+                button.className = 'px-3 py-2 rounded-lg border border-purple-500 hover:bg-purple-500/20 whitespace-nowrap';
+                button.textContent = activeChallenge?.id === challenge.id ? 'Neu starten' : 'Starten';
+                button.addEventListener('click', () => startChallenge(challenge));
+                row.append(description, button);
+                list.appendChild(row);
+            });
+            updateChallengeStatus();
+        }
+
+        function startChallenge(challenge) {
+            if (isAnimating || isDemoRunning) return;
+            activeChallenge = challenge;
+            ruleMode = challenge.mode;
+            diskCount = challenge.disks;
+            saveSettings();
+            syncSettingsUI();
+            closePanels();
+            resetGame();
+        }
+
         function closePanels() {
             panelOverlay.classList.add('hidden');
             document.getElementById('mixer-panel').classList.add('hidden');
             document.getElementById('scores-panel').classList.add('hidden');
+            document.getElementById('learn-panel').classList.add('hidden');
+            document.getElementById('challenge-panel').classList.add('hidden');
         }
 
         function openPanel(panelId) {
@@ -1997,12 +2175,15 @@
                 return;
             }
             ruleMode = e.target.value;
+            activeChallenge = null;
             saveSettings();
             resetGame();
             const descriptions = {
                 standard: 'Standardregel aktiv.',
                 adjacent: 'Variante aktiv: nur Züge zwischen benachbarten Türmen.',
-                clockwise: 'Variante aktiv: nur links → Mitte → rechts → links.'
+                clockwise: 'Variante aktiv: nur links → Mitte → rechts → links.',
+                four: 'Vier-Turm-Modus aktiv: Nutze den zusätzlichen Hilfsturm.',
+                fourAdjacent: 'Schwieriger Vier-Turm-Modus: nur Züge zwischen direkten Nachbartürmen.'
             };
             setMessage(descriptions[ruleMode]);
         });
@@ -2023,6 +2204,11 @@
         });
 
         document.getElementById('mixer-open-btn').addEventListener('click', () => openPanel('mixer-panel'));
+        document.getElementById('learn-open-btn').addEventListener('click', () => { renderLearnStep(); openPanel('learn-panel'); });
+        document.getElementById('learn-prev-btn').addEventListener('click', () => { learnStep = Math.max(0, learnStep - 1); renderLearnStep(); });
+        document.getElementById('learn-next-btn').addEventListener('click', () => { learnStep = Math.min(LEARN_STEPS.length - 1, learnStep + 1); renderLearnStep(); });
+        document.getElementById('learn-action-btn').addEventListener('click', runLearnAction);
+        document.getElementById('challenge-open-btn').addEventListener('click', () => { renderChallenges(); openPanel('challenge-panel'); });
         document.getElementById('scores-open-btn').addEventListener('click', () => {
             renderLeaderboard();
             openPanel('scores-panel');
@@ -2090,6 +2276,7 @@
                 return;
             }
             diskCount = parseInt(e.target.value, 10);
+            activeChallenge = null;
             document.getElementById('disk-count-display').textContent = diskCount;
             saveSettings();
             resetGame();
@@ -2101,7 +2288,7 @@
                 return;
             }
             if (['INPUT', 'SELECT', 'BUTTON'].includes(document.activeElement?.tagName)) return;
-            if (e.key >= '1' && e.key <= '3') {
+            if (e.key >= '1' && e.key <= String(towerCountForMode())) {
                 if (!isAnimating && !isDemoRunning && !gameWon) handleTowerClick(Number(e.key) - 1);
             } else if (e.key.toLowerCase() === 'h') {
                 showHint();

@@ -16,10 +16,14 @@ Alle Scheiben müssen vom linken auf den rechten Turm bewegt werden.
 - frei dreh- und zoombare 3D-Szene
 - animierter Tag-Nacht-Zyklus
 - Regen, Gewitter, Vögel, Verkehr und weitere Umgebungsdetails
-- drei Spielregeln:
+- fünf Spielregeln:
   - Standard
   - nur Nachbartürme
   - nur im Uhrzeigersinn
+  - Vier-Turm-Modus (Reve’s Puzzle)
+  - Vier-Turm-Modus nur mit benachbarten Zügen
+- geführter Lernmodus mit Regelerklärung und Lösungsvisualisierung
+- vier lokale Herausforderungen mit Zug- und Zeitvorgaben
 - optimaler Hinweismodus mit visueller Turm-Markierung
 - automatische Lösung mit Pause, Einzelschritt und drei Geschwindigkeiten
 - dynamisch berechnete Mindestzugzahl für jede Variante
@@ -43,7 +47,7 @@ Die Kamera wird durch Ziehen gedreht und mit dem Mausrad beziehungsweise der Tou
 
 | Taste | Funktion |
 |---|---|
-| `1`, `2`, `3` | linken, mittleren oder rechten Turm auswählen |
+| `1`, `2`, `3`, `4` | einen verfügbaren Turm auswählen |
 | `H` | optimalen Hinweis anzeigen |
 | `R` | Spiel neu starten |
 | `Esc` | Auswahl oder Dialog schließen |
@@ -81,4 +85,13 @@ Bestwerte und Einstellungen werden ausschließlich im lokalen Browser-Speicher a
 
 ## Lizenz und Audioquelle
 
-Im Repository ist derzeit keine Projektlizenz dokumentiert. Vor einer Weitergabe oder Veröffentlichung sollten die Lizenz des Quellcodes sowie Herkunft und Nutzungsrechte der Audiodatei eindeutig ergänzt werden.
+Die Audiodatei `traffic-heavy-busy-street-india.mp3` basiert auf
+[„traffic heavy busy street … India.flac“](https://freesound.org/people/kyles/sounds/451498/)
+von Freesound-Nutzer **kyles**. Der Originalton wurde unter
+[CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
+veröffentlicht und für dieses Projekt in das MP3-Format konvertiert.
+
+Der Projektcode ist proprietär. Das Ausführen und Ansehen für private,
+nichtkommerzielle Zwecke ist gestattet; Kopieren, Bearbeiten, Weitergeben,
+Unterlizenzieren und Verkaufen bedürfen der vorherigen schriftlichen Erlaubnis
+von Jkegithub. Maßgeblich ist die Datei [`LICENSE.md`](LICENSE.md).
